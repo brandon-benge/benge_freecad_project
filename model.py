@@ -63,7 +63,9 @@ class ModelBuilder:
             category=category,
             geometry=shape,
             geometry_kind="solid",
-            placement=Placement(tuple(to_mm(value) for value in placement)),
+            placement=Placement(
+                (to_mm(placement[0]), to_mm(placement[1]), to_mm(placement[2]))
+            ),
             dimensions=dimensions,
             material=self.material(category, color),
             color_rgb=color,

@@ -127,6 +127,18 @@ def managed_specs(manifest: dict[str, Any]) -> list[tuple[str, str]]:
     return result
 
 
+def ensure_managed_executables(project: Path, manifest: dict[str, Any]) -> None:
+    """Restore executable bits that archive extraction may discard."""
+    managed = {destination for _, destination in managed_specs(manifest)}
+    for relative in manifest.get("executable_managed_files", []):
+        if relative not in managed:
+            raise RuntimeError(f"Executable path is not managed: {relative}")
+        target = project / relative
+        if not target.is_file():
+            raise RuntimeError(f"Managed executable is missing: {target}")
+        target.chmod(target.stat().st_mode | 0o111)
+
+
 def force_refreshable_specs(manifest: dict[str, Any]) -> list[tuple[str, str]]:
     """Return safe project defaults that an explicit force option may restore."""
     items = manifest.get("force_refreshable_files", manifest.get("force_refreshable_guidance", []))
@@ -167,6 +179,7 @@ def install_from_source(
     for source_name, destination_name in managed_specs(manifest):
         copy_path(source / source_name, project / destination_name)
         report["managed"].append(destination_name)
+    ensure_managed_executables(project, manifest)
     for item in manifest["project_seed_files"]:
         source_name, destination_name = spec(item)
         destination = project / destination_name
@@ -227,6 +240,7 @@ def main(argv: list[str] | None = None) -> int:
     print_report(report)
     print("\nSetup: python -m venv .venv && .venv/bin/pip install -r .tools/requirements/runtime.lock")
     print("Build: python build.py")
+    print("Viewer: ./start.sh")
     return 0
 
 

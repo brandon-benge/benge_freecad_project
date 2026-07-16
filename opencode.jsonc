@@ -111,7 +111,7 @@
     "save": {
       "description": "Hidden save-only subagent with exclusive access to the SpecRepo autocommit tool.",
       "mode": "subagent",
-      "hidden": true,
+      "hidden": false,
       "temperature": 0,
       "prompt": "You are the Save agent. Use only the save skill and the specrepo-autocommit tool. Save already-verified repository changes exactly once using the supplied summary. Do not inspect or edit files, run shell commands, invoke Git directly, delegate work, or perform implementation or verification. If the exclusive tool is unavailable or rejects the request, report that result without attempting a fallback.",
       "permission": {

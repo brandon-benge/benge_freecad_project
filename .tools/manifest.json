@@ -1,5 +1,5 @@
 {
-  "tool_version": "1.0.0",
+  "tool_version": "1.0.1",
   "managed_files": [
     {"source": ".tools/python_cad_tools", "destination": ".tools/python_cad_tools"},
     {"source": ".tools/requirements", "destination": ".tools/requirements"},
@@ -8,11 +8,13 @@
     {"source": ".tools/update_tools.py", "destination": ".tools/update_tools.py"},
     {"source": ".tools/manifest.json", "destination": ".tools/manifest.json"},
     {"source": "build.py", "destination": "build.py"},
+    {"source": "start.sh", "destination": "start.sh"},
     {"source": "viewer", "destination": "viewer"},
     {"source": ".opencode/commands", "destination": ".opencode/commands"},
     {"source": ".opencode/tools", "destination": ".opencode/tools"},
     {"source": ".github/workflows/pages.yml", "destination": ".github/workflows/pages.yml"}
   ],
+  "executable_managed_files": ["start.sh"],
   "project_seed_files": [
     {"source": ".tools/templates/project/model.py", "destination": "model.py"},
     {"source": ".tools/templates/project/config.py", "destination": "config.py"},

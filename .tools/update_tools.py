@@ -15,6 +15,7 @@ from install import (
     copy_missing_path,
     copy_path,
     ensure_agent_links,
+    ensure_managed_executables,
     force_refreshable_specs,
     load_manifest,
     managed_specs,
@@ -49,6 +50,7 @@ def update_from_source(source: Path, project: Path, *, force_guidance: bool = Fa
     for source_name, destination_name in managed_specs(manifest):
         copy_path(source / source_name, project / destination_name)
         report["managed"].append(destination_name)
+    ensure_managed_executables(project, manifest)
     for item in manifest["project_seed_files"]:
         source_name, destination_name = spec(item)
         destination = project / destination_name
@@ -87,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
         report = update_from_source(source, project, force_guidance=args.force_guidance, remove_legacy=not args.skip_legacy_removal)
     print_report(report)
     print("\nManaged tool update complete; protected design source, project tests, generated outputs, and unknown files were preserved.")
+    print("Viewer: ./start.sh")
     return 0
 
 

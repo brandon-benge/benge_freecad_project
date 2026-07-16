@@ -2,7 +2,7 @@
 
 ## Hard boundary: managed tooling
 
-Do not edit files under `.tools/`, managed root `build.py`, managed root `opencode.jsonc`, managed `viewer/`, `.github/workflows/pages.yml`, managed `.agents/`, `.opencode/commands/`, `.opencode/tools/`, or tool-registration links. These files come from the upstream template through `.tools/update_tools.py` and must not contain project-specific changes. This applies to every assistant and any subagent it invokes.
+Do not edit files under `.tools/`, managed root `build.py` or `start.sh`, managed root `opencode.jsonc`, managed `viewer/`, `.github/workflows/pages.yml`, managed `.agents/`, `.opencode/commands/`, `.opencode/tools/`, or tool-registration links. These files come from the upstream template through `.tools/update_tools.py` and must not contain project-specific changes. This applies to every assistant and any subagent it invokes.
 
 If a requested change appears to require managed tooling, stop and explain that it belongs upstream. Do not patch managed files as a project workaround.
 

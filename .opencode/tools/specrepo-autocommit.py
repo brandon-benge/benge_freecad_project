@@ -23,7 +23,7 @@ EX_USAGE = 64
 def print_usage() -> None:
     print(
         "Usage: specrepo-autocommit \"<summary of what changed>\"\n\n"
-        "Runs autocommit only when the current git branch is not main.\n"
+        "Runs autocommit on the current git branch.\n"
         "AUTOCOMMIT_PARAMS must point to an existing YAML configuration file.",
         file=sys.stderr,
     )
@@ -196,11 +196,6 @@ def main(argv: list[str]) -> int:
 
     summary = " ".join(argv[1:]).strip()
     branch = get_current_branch(config_path)
-
-    if branch == "main":
-        print("Autocommit blocked: current branch is main.")
-        return 0
-
     executable = ensure_autocommit_installed(config_path)
     run_autocommit(executable, config_path, summary, branch)
     return 0
