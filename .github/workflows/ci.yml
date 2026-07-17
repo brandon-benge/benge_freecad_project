@@ -1,4 +1,4 @@
-name: Benge Property CAD CI
+name: File Template CAD CI
 
 on:
   push:
@@ -227,10 +227,13 @@ jobs:
       - name: Dependency boundary check
         run: |
           python -c "
-          import importlib.metadata
+          import importlib.metadata, tomllib
+          with open('pyproject.toml', 'rb') as f:
+              deps = tomllib.load(f)['project']['dependencies']
+          expected = next(d for d in deps if d.startswith('python-cad-tools'))
           ver = importlib.metadata.version('python-cad-tools')
           print(f'python-cad-tools version: {ver}')
-          assert ver == '0.1.3.dev2', f'Expected 0.1.3.dev2, got {ver}'
+          assert ver in expected, f'Expected {expected}, got {ver}'
           "
           python -c "
           import python_cad_tools
@@ -273,12 +276,21 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Get python-cad-tools version
+        id: cad-ver
+        shell: python
+        run: |
+          import os, tomllib
+          with open('pyproject.toml', 'rb') as f:
+              deps = tomllib.load(f)['project']['dependencies']
+          ver = next(d for d in deps if d.startswith('python-cad-tools')).split('==')[1]
+          print(f'version={ver}', file=open(os.environ["GITHUB_OUTPUT"], "a"))
       - run: |
           cat <<JSON > compatibility-report.json
           {
             "plan_contract": "repo-split-v1",
             "design_revision": "${{ github.sha }}",
-            "python_cad_tools_version": "0.1.3.dev2",
+            "python_cad_tools_version": "${{ steps.cad-ver.outputs.version }}",
             "workflow_run_id": "${{ github.run_id }}",
             "status": "completed",
             "date": "${{ github.event.repository.updated_at }}"
@@ -290,7 +302,7 @@ jobs:
           path: compatibility-report.json
       - uses: actions/upload-artifact@v4
         with:
-          name: benge-property-cad-generated
+          name: file-template-cad-generated
           path: generated/
       - uses: actions/upload-artifact@v4
         with:

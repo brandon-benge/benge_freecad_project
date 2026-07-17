@@ -17,39 +17,39 @@ from python_cad_tools.build import BuildOptions, ValidationOptions, build_projec
 from python_cad_tools.determinism import semantic_hash
 
 ANNOTATION_IDS = {
-    "benge.annotation.section.a301",
-    "benge.annotation.elevation.a201",
-    "benge.annotation.elevation.a202",
-    "benge.annotation.schedule.openings",
+    "file.annotation.section.a301",
+    "file.annotation.elevation.a201",
+    "file.annotation.elevation.a202",
+    "file.annotation.schedule.openings",
 }
 
 ANNOTATION_SUB_IDS = {
-    "benge.annotation.elevation.a201",
-    "benge.annotation.elevation.a201.label",
-    "benge.annotation.elevation.a201.outline",
-    "benge.annotation.elevation.a201.pointer",
-    "benge.annotation.elevation.a202",
-    "benge.annotation.elevation.a202.label",
-    "benge.annotation.elevation.a202.outline",
-    "benge.annotation.elevation.a202.pointer",
-    "benge.annotation.schedule.openings",
-    "benge.annotation.schedule.openings.border",
-    "benge.annotation.schedule.openings.header.0",
-    "benge.annotation.schedule.openings.header.1",
-    "benge.annotation.schedule.openings.header.2",
-    "benge.annotation.schedule.openings.header.3",
-    "benge.annotation.schedule.openings.row.SD-01.cell.0",
-    "benge.annotation.schedule.openings.row.SD-01.cell.1",
-    "benge.annotation.schedule.openings.row.SD-01.cell.2",
-    "benge.annotation.schedule.openings.row.SD-01.cell.3",
-    "benge.annotation.schedule.openings.row.SD-01.separator",
-    "benge.annotation.schedule.openings.title",
-    "benge.annotation.section.a301",
-    "benge.annotation.section.a301.arrow.end",
-    "benge.annotation.section.a301.arrow.start",
-    "benge.annotation.section.a301.label.end",
-    "benge.annotation.section.a301.label.start",
-    "benge.annotation.section.a301.line",
+    "file.annotation.elevation.a201",
+    "file.annotation.elevation.a201.label",
+    "file.annotation.elevation.a201.outline",
+    "file.annotation.elevation.a201.pointer",
+    "file.annotation.elevation.a202",
+    "file.annotation.elevation.a202.label",
+    "file.annotation.elevation.a202.outline",
+    "file.annotation.elevation.a202.pointer",
+    "file.annotation.schedule.openings",
+    "file.annotation.schedule.openings.border",
+    "file.annotation.schedule.openings.header.0",
+    "file.annotation.schedule.openings.header.1",
+    "file.annotation.schedule.openings.header.2",
+    "file.annotation.schedule.openings.header.3",
+    "file.annotation.schedule.openings.row.SD-01.cell.0",
+    "file.annotation.schedule.openings.row.SD-01.cell.1",
+    "file.annotation.schedule.openings.row.SD-01.cell.2",
+    "file.annotation.schedule.openings.row.SD-01.cell.3",
+    "file.annotation.schedule.openings.row.SD-01.separator",
+    "file.annotation.schedule.openings.title",
+    "file.annotation.section.a301",
+    "file.annotation.section.a301.arrow.end",
+    "file.annotation.section.a301.arrow.start",
+    "file.annotation.section.a301.label.end",
+    "file.annotation.section.a301.label.start",
+    "file.annotation.section.a301.line",
 }
 
 
@@ -92,7 +92,7 @@ def test_build_annotations_complete_before_return(built_output) -> None:
     ann_manifest = built_output / "drawings" / "annotation-manifest.json"
     assert ann_manifest.is_file(), f"Missing annotation manifest at {ann_manifest}"
     annotations = _load_json(ann_manifest)
-    assert annotations["provider_id"] == "benge.property.annotations"
+    assert annotations["provider_id"] == "file.template.annotations"
     ann_ids = {ann["id"] for ann in annotations["annotations"]}
     assert ann_ids >= ANNOTATION_IDS
 
@@ -100,8 +100,8 @@ def test_build_annotations_complete_before_return(built_output) -> None:
 def test_build_selected_formats(copied_project) -> None:
     result = build_project(BuildOptions(project_root=copied_project, formats=("step", "ifc")))
     output = result.output_root
-    assert (output / "step" / "BengeProperty.step").is_file()
-    assert (output / "ifc" / "BengeProperty.ifc").is_file()
+    assert (output / "step" / "FileTemplate.step").is_file()
+    assert (output / "ifc" / "FileTemplate.ifc").is_file()
     assert not (output / "glb").exists() or not list((output / "glb").rglob("*"))
 
 
@@ -125,13 +125,13 @@ def _cli(*args: str, cwd: Path) -> subprocess.CompletedProcess:
 def test_cli_build_from_root(copied_project) -> None:
     result = _cli("build", cwd=copied_project)
     assert result.returncode == 0, f"CLI build failed: stderr={result.stderr}"
-    assert (copied_project / "generated" / "step" / "BengeProperty.step").is_file()
+    assert (copied_project / "generated" / "step" / "FileTemplate.step").is_file()
 
 
 def test_cli_build_from_path_with_spaces(copied_project_with_spaces) -> None:
     result = _cli("build", cwd=copied_project_with_spaces)
     assert result.returncode == 0, f"CLI build failed in path with spaces: {result.stderr}"
-    assert (copied_project_with_spaces / "generated" / "step" / "BengeProperty.step").is_file()
+    assert (copied_project_with_spaces / "generated" / "step" / "FileTemplate.step").is_file()
 
 
 def test_cli_validate(copied_project) -> None:
@@ -147,7 +147,7 @@ def test_cli_verify(session_project) -> None:
 
 def test_cli_clean(copied_project) -> None:
     _cli("build", cwd=copied_project)
-    assert (copied_project / "generated" / "step" / "BengeProperty.step").is_file()
+    assert (copied_project / "generated" / "step" / "FileTemplate.step").is_file()
     result = _cli("clean", cwd=copied_project)
     assert result.returncode == 0, f"CLI clean failed: {result.stderr}"
     assert not (copied_project / "generated" / "step").exists()
@@ -156,7 +156,7 @@ def test_cli_clean(copied_project) -> None:
 def test_cli_repeated_format(copied_project) -> None:
     result = _cli("build", "--format", "step", "--format", "ifc", cwd=copied_project)
     assert result.returncode == 0, f"CLI repeated format failed: {result.stderr}"
-    assert (copied_project / "generated" / "step" / "BengeProperty.step").is_file()
+    assert (copied_project / "generated" / "step" / "FileTemplate.step").is_file()
     assert not (copied_project / "generated" / "glb").exists()
 
 
@@ -187,7 +187,7 @@ def test_artifact_stable_artifact_set_hash(build_manifest) -> None:
 
 
 def test_step_reload(built_output) -> None:
-    step_path = built_output / "step" / "BengeProperty.step"
+    step_path = built_output / "step" / "FileTemplate.step"
     validation = _load_json(built_output / "step" / "validation.json")
     assert validation["valid"] is True
     solids = import_step(step_path).solids()
@@ -197,7 +197,7 @@ def test_step_reload(built_output) -> None:
 
 
 def test_ifc_parse_and_reconcile(built_output) -> None:
-    ifc = ifcopenshell.open(built_output / "ifc" / "BengeProperty.ifc")
+    ifc = ifcopenshell.open(built_output / "ifc" / "FileTemplate.ifc")
     ifc_validation = _load_json(built_output / "ifc" / "validation.json")
     assert ifc_validation["valid"] is True
     proxies = ifc.by_type("IfcBuildingElementProxy")
@@ -247,7 +247,7 @@ def test_drawings_inventory(built_output) -> None:
     assert len(svg_paths) == len(dxf_paths) == 4
     for svg, dxf in zip(svg_paths, dxf_paths, strict=True):
         assert svg.stem == dxf.stem
-    pdf_path = built_output / "drawings" / "pdf" / "BengeProperty_Conceptual_Drawings.pdf"
+    pdf_path = built_output / "drawings" / "pdf" / "FileTemplate_Conceptual_Drawings.pdf"
     assert pdf_path.is_file()
     pdf = PdfReader(pdf_path)
     assert len(pdf.pages) == 4
@@ -255,7 +255,7 @@ def test_drawings_inventory(built_output) -> None:
 
 
 def test_plan_svg_content(built_output) -> None:
-    plan = ET.parse(built_output / "drawings" / "svg" / "BengeProperty_plan.svg").getroot()
+    plan = ET.parse(built_output / "drawings" / "svg" / "FileTemplate_plan.svg").getroot()
     plan_source_ids = {element.attrib.get("data-source-id") for element in plan.iter()}
     assert {
         "complex.house.house_mass",
@@ -292,7 +292,7 @@ def test_two_clean_builds_identical(copied_project) -> None:
     known_non_deterministic = {
         "run-metadata.json",
         "build-manifest.json",
-        "BengeProperty.step",
+        "FileTemplate.step",
     }
     bm1_stable_excluding_step = semantic_hash(
         [
@@ -329,7 +329,7 @@ def test_deterministic_nonvolatile_bytes(copied_project) -> None:
     output2 = copied_project / "generated"
     bm1 = _load_json(output1 / "manifests" / "build-manifest.json")
     bm2 = _load_json(output2 / "manifests" / "build-manifest.json")
-    volatile_names = {"run-metadata.json", "build-manifest.json", "BengeProperty.step"}
+    volatile_names = {"run-metadata.json", "build-manifest.json", "FileTemplate.step"}
     for entry1, entry2 in zip(bm1["artifacts"], bm2["artifacts"], strict=True):
         if Path(entry1["path"]).name in volatile_names:
             continue

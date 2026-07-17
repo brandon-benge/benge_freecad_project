@@ -45,10 +45,10 @@ def _build_model(project_root: Path) -> DesignModel:
 
 def test_model_identity(copied_project) -> None:
     model = _build_model(copied_project)
-    assert model.id == "benge.property"
-    assert model.name == "Benge Property"
-    assert model.artifact_stem == "BengeProperty"
-    assert model.metadata["project"] == "Benge Property CAD"
+    assert model.id == "file.template"
+    assert model.name == "File Template"
+    assert model.artifact_stem == "FileTemplate"
+    assert model.metadata["project"] == "File Template CAD"
 
 
 def test_model_no_fatal_issues(copied_project) -> None:

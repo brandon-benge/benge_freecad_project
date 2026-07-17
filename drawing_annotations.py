@@ -1,4 +1,4 @@
-"""Format-neutral Benge drawing annotation provider.
+"""Format-neutral File Template drawing annotation provider.
 
 Usage:
     from python_cad_tools.context import DrawingContext
@@ -20,7 +20,7 @@ from python_cad_tools.drawings import (
 )
 from python_cad_tools.units import format_feet_inches, to_mm
 
-PROVIDER_ID = "benge.property.annotations"
+PROVIDER_ID = "file.template.annotations"
 
 
 def _format_opening(value_mm: float) -> str:
@@ -45,7 +45,7 @@ def build_annotations(context: DrawingContext) -> DrawingAnnotationSet:
     cut_x = to_mm(config.SECTION_CUT_X)
 
     section_callout = SectionCallout(
-        id="benge.annotation.section.a301",
+        id="file.annotation.section.a301",
         sheet_id="A-101",
         start=(cut_x, min_y),
         end=(cut_x, max_y),
@@ -55,7 +55,7 @@ def build_annotations(context: DrawingContext) -> DrawingAnnotationSet:
     )
 
     elev_a201 = ElevationMarker(
-        id="benge.annotation.elevation.a201",
+        id="file.annotation.elevation.a201",
         sheet_id="A-101",
         position=(5500.0, 1600.0),
         reference_sheet_id="A-201",
@@ -64,7 +64,7 @@ def build_annotations(context: DrawingContext) -> DrawingAnnotationSet:
     )
 
     elev_a202 = ElevationMarker(
-        id="benge.annotation.elevation.a202",
+        id="file.annotation.elevation.a202",
         sheet_id="A-101",
         position=(13500.0, -3500.0),
         reference_sheet_id="A-202",
@@ -75,7 +75,7 @@ def build_annotations(context: DrawingContext) -> DrawingAnnotationSet:
     width_mm = to_mm(config.DOOR_WIDTH)
     height_mm = to_mm(config.DOOR_HEIGHT)
     schedule = Table(
-        id="benge.annotation.schedule.openings",
+        id="file.annotation.schedule.openings",
         sheet_id="A-101",
         position=(min_x + 0.04 * (max_x - min_x), min_y + 1400.0),
         title="DOOR & WINDOW SCHEDULE",

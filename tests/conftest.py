@@ -56,7 +56,7 @@ def copied_project(repo_root: Path, tmp_path: Path) -> Path:
 
 @pytest.fixture
 def copied_project_with_spaces(repo_root: Path, tmp_path: Path) -> Path:
-    dest = tmp_path / "my project with spaces" / "benge"
+    dest = tmp_path / "my project with spaces" / "file"
     _copy_project(repo_root, dest)
     return dest
 

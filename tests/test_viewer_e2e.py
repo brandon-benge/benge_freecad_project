@@ -31,7 +31,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "--base-path",
         action="store",
         default="/",
-        help="Base path for the served site (e.g. /benge-property-cad/)",
+        help="Base path for the served site (e.g. /file-template-cad/)",
     )
 
 
@@ -93,7 +93,7 @@ def test_prepare_site_node_unavailable(copied_project, tmp_path) -> None:
     assert "node" not in os.environ.get("PATH", "").lower() or True
     dest = tmp_path / "site"
     site = prepare_site(copied_project, dest)
-    assert site.project_id == "benge.property"
+    assert site.project_id == "file.template"
     assert site.file_count > 0
     assert len(site.design_build_hash) == 64
 
@@ -132,11 +132,11 @@ def test_prepare_site_base_path_root(copied_project, tmp_path) -> None:
     assert (dest / "index.html").is_file()
 
 
-def test_prepare_site_base_path_benge_property_cad(copied_project, tmp_path) -> None:
+def test_prepare_site_base_path_file_template_cad(copied_project, tmp_path) -> None:
     _build(copied_project)
-    dest = tmp_path / "site-benge"
-    site = prepare_site(copied_project, dest, base_path="/benge-property-cad/")
-    assert site.base_path == "/benge-property-cad/"
+    dest = tmp_path / "site-file"
+    site = prepare_site(copied_project, dest, base_path="/file-template-cad/")
+    assert site.base_path == "/file-template-cad/"
     assert (dest / "index.html").is_file()
 
 
@@ -170,14 +170,14 @@ def test_download_manifest(server_process) -> None:
 
 def test_glb_artifact(server_process) -> None:
     proc, url = server_process
-    resp = requests.get(f"{url}artifacts/glb/BengeProperty.glb", timeout=10)
+    resp = requests.get(f"{url}artifacts/glb/FileTemplate.glb", timeout=10)
     assert resp.status_code == 200
     assert resp.headers.get("content-type") in ("model/gltf-binary", "application/octet-stream", "")
 
 
 def test_drawing_svg_artifact(server_process) -> None:
     proc, url = server_process
-    resp = requests.get(f"{url}artifacts/drawings/svg/BengeProperty_plan.svg", timeout=10)
+    resp = requests.get(f"{url}artifacts/drawings/svg/FileTemplate_plan.svg", timeout=10)
     assert resp.status_code == 200
     assert "image/svg+xml" in resp.headers.get("content-type", "")
 

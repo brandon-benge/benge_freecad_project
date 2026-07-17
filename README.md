@@ -1,4 +1,4 @@
-# Benge Property CAD
+# File Template CAD
 
 This project uses `model.py`, `config.py`, and `drawing_annotations.py` as its
 authoritative design source. One headless build generates exact STEP, IFC4, GLB,
@@ -86,8 +86,7 @@ artifacts instead of committing them.
 See `AGENTS.md` for separation of duties, writable scope, and build/verification
 commands. The project uses five roles:
 
-- **benge-design-maintainer**: config/model/annotation/test edits
-- **benge-project-operations**: dependency/CI/governance maintenance
-- **benge-artifact-reviewer**: read-only artifact review
+- **file-design-maintainer**: config/model/annotation/test edits
+- **file-artifact-reviewer**: read-only artifact review
 - **cad-compatibility-verifier**: independent verification
 - **save**: exclusive autocommit persistence

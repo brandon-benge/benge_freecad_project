@@ -1,4 +1,4 @@
-"""Headless shared-model translation of the linked Benge FreeCAD concept."""
+"""Headless shared-model translation of the linked File Template CAD concept."""
 
 from __future__ import annotations
 
@@ -120,7 +120,7 @@ class ModelBuilder:
             color_rgb=color,
             ifc_mapping=IfcMapping("IfcBuildingElementProxy", "NOTDEFINED"),
             storey="Exterior Concept",
-            tags={"benge-property", _slug(category)},
+            tags={"file-template", _slug(category)},
             properties=values,
             source_module="model",
         )
@@ -993,12 +993,12 @@ def build_model(context: BuildContext) -> DesignModel:
     )
 
     return DesignModel(
-        id="benge.property",
+        id="file.template",
         name=cfg.PROJECT_NAME,
-        artifact_stem="BengeProperty",
+        artifact_stem="FileTemplate",
         elements=builder.elements,
         metadata={
-            "project": "Benge Property CAD",
+            "project": "File Template CAD",
             "source_authority": "https://github.com/brandon-benge/benge-property-cad",
             "source_commit": context.source_revision or "unknown",
         },

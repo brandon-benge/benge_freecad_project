@@ -14,7 +14,7 @@ def test_config_dimensions_positive(copied_project) -> None:
     finally:
         sys.path.remove(str(copied_project))
 
-    assert cfg.PROJECT_NAME == "Benge Property"
+    assert cfg.PROJECT_NAME == "File Template"
 
     for name, value in vars(cfg).items():
         if name.endswith("_COLOR"):

@@ -20,9 +20,9 @@ from python_cad_tools.units import to_mm
 
 def _empty_model() -> DesignModel:
     return DesignModel(
-        id="benge.property",
-        name="Benge Property",
-        artifact_stem="BengeProperty",
+        id="file.template",
+        name="File Template",
+        artifact_stem="FileTemplate",
         elements=[],
     )
 
@@ -88,7 +88,7 @@ def test_provider_id_and_provider_determinism(copied_project) -> None:
     ctx = _context(copied_project)
     first = _build_annotations(copied_project, ctx)
     second = _build_annotations(copied_project, ctx)
-    assert first.provider_id == "benge.property.annotations"
+    assert first.provider_id == "file.template.annotations"
     assert first == second
 
 
@@ -100,10 +100,10 @@ def test_annotations_cardinality_and_ids(copied_project) -> None:
     assert len(sheet.annotations) == 4
     ids = {ann.id for ann in sheet.annotations}
     assert ids == {
-        "benge.annotation.section.a301",
-        "benge.annotation.elevation.a201",
-        "benge.annotation.elevation.a202",
-        "benge.annotation.schedule.openings",
+        "file.annotation.section.a301",
+        "file.annotation.elevation.a201",
+        "file.annotation.elevation.a202",
+        "file.annotation.schedule.openings",
     }
 
 
@@ -118,7 +118,7 @@ def test_section_callout_content(copied_project) -> None:
     ctx = _context(copied_project)
     result = _build_annotations(copied_project, ctx)
     ann = {a.id: a for a in result.sheets[0].annotations}
-    sec = ann["benge.annotation.section.a301"]
+    sec = ann["file.annotation.section.a301"]
     assert isinstance(sec, SectionCallout)
     assert sec.sheet_id == "A-101"
     assert sec.reference_sheet_id == "A-301"
@@ -132,12 +132,12 @@ def test_section_callout_content(copied_project) -> None:
 def test_elevation_markers_content(copied_project) -> None:
     result = _build_annotations(copied_project)
     ann = {a.id: a for a in result.sheets[0].annotations}
-    e201 = ann["benge.annotation.elevation.a201"]
+    e201 = ann["file.annotation.elevation.a201"]
     assert isinstance(e201, ElevationMarker)
     assert e201.position == (5500.0, 1600.0)
     assert e201.reference_sheet_id == "A-201"
     assert e201.direction == "down"
-    e202 = ann["benge.annotation.elevation.a202"]
+    e202 = ann["file.annotation.elevation.a202"]
     assert isinstance(e202, ElevationMarker)
     assert e202.position == (13500.0, -3500.0)
     assert e202.reference_sheet_id == "A-202"
@@ -148,7 +148,7 @@ def test_schedule_content(copied_project) -> None:
     cfg = _load_config(copied_project)
     result = _build_annotations(copied_project)
     ann = {a.id: a for a in result.sheets[0].annotations}
-    sched = ann["benge.annotation.schedule.openings"]
+    sched = ann["file.annotation.schedule.openings"]
     assert isinstance(sched, Table)
     assert sched.title == "DOOR & WINDOW SCHEDULE"
     assert sched.columns == ("Opening", "Type", "Width", "Height")
@@ -167,7 +167,7 @@ def test_schedule_derives_from_config(copied_project) -> None:
     cfg = _load_config(copied_project)
     result = _build_annotations(copied_project)
     ann = {a.id: a for a in result.sheets[0].annotations}
-    sched = ann["benge.annotation.schedule.openings"]
+    sched = ann["file.annotation.schedule.openings"]
     assert isinstance(sched, Table)
     row = sched.rows[0]
     width_mm = to_mm(cfg.DOOR_WIDTH)
@@ -181,7 +181,7 @@ def test_schedule_position_from_bounds(copied_project) -> None:
     ctx = _context(copied_project, sheets=(_plan_sheet(bounds),))
     result = _build_annotations(copied_project, ctx)
     ann = {a.id: a for a in result.sheets[0].annotations}
-    sched = ann["benge.annotation.schedule.openings"]
+    sched = ann["file.annotation.schedule.openings"]
     assert isinstance(sched, Table)
     min_x, min_y, max_x, _ = bounds
     expected_x = min_x + 0.04 * (max_x - min_x)
@@ -245,7 +245,7 @@ def test_section_callout_bounds_tracking(copied_project) -> None:
     ctx = _context(copied_project, sheets=(_plan_sheet(bounds),))
     result = _build_annotations(copied_project, ctx)
     ann = {a.id: a for a in result.sheets[0].annotations}
-    sec = ann["benge.annotation.section.a301"]
+    sec = ann["file.annotation.section.a301"]
     assert isinstance(sec, SectionCallout)
     assert sec.start[1] == bounds[1]
     assert sec.end[1] == bounds[3]

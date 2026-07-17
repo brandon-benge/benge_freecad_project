@@ -2,19 +2,19 @@
   "baseline": {
     "element_count": 236,
     "head": "a82127eb725f18e69891303138a63804658fc6a6",
-    "model_id": "benge.property",
+    "model_id": "file.template",
     "model_metadata": {
-      "project": "Benge Property CAD",
+      "project": "File Template CAD",
       "source_authority": "https://github.com/brandon-benge/benge-property-cad",
       "source_commit": "a82127eb725f18e69891303138a63804658fc6a6"
     },
-    "model_name": "Benge Property",
+    "model_name": "File Template",
     "source_sha256": {
-      "config.py": "7d6fc172a50ead071dbbbc7a8828a6317006241112e5f223d4ff521823cf9b8d",
-      "model.py": "f705c40b68e88bbf10f334199893b2db1dfa6b49aa0a459a6d6965cb558cd92c"
+      "config.py": "83654ffa0e6fe45125b3b0a6ca6e363a7588d09c00fb26c51f6e3bf5ab8894d7",
+      "model.py": "5a2fe218f1ac70689a956ea4703248387b9f7a62b9851c94a09cde0e02613865"
     }
   },
-  "contract": "benge-property-cad-model-contract-v1",
+  "contract": "file-template-cad-model-contract-v1",
   "element_ids": [
     "complex.deck_board.lower_deck_board_01",
     "complex.deck_board.lower_deck_board_02",
@@ -256,7 +256,7 @@
   "identity_migration": {
     "artifact_stem": {
       "legacy": "BengeComplexFunctional",
-      "target": "BengeProperty"
+      "target": "FileTemplate"
     },
     "element_ids": {
       "policy": "preserve_exactly",
@@ -268,7 +268,7 @@
     "ifc_spatial_and_aggregate_global_ids": {
       "deterministic_model_id_input": {
         "legacy": "functional.benge_complex",
-        "target": "benge.property"
+        "target": "file.template"
       },
       "legacy_observations": [
         {
@@ -339,19 +339,19 @@
     },
     "model_id": {
       "legacy": "functional.benge_complex",
-      "target": "benge.property"
+      "target": "file.template"
     },
     "model_name": {
       "legacy": "BengeComplexFunctional",
-      "target": "Benge Property"
+      "target": "File Template"
     },
     "output_filename_stem": {
       "legacy": "BengeComplexFunctional",
-      "target": "BengeProperty"
+      "target": "FileTemplate"
     },
     "project_tag": {
       "legacy": "complex-functional",
-      "target": "benge-property"
+      "target": "file-template"
     },
     "source_module": {
       "legacy": "functional.benge_complex.model",
