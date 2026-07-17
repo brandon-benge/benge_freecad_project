@@ -20,7 +20,7 @@ from python_cad_tools.context import BuildContext
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "model_contract_v1.json"
-BASELINE_HEAD = "6e296e0521f612c8d90f805dffd94c649ee4b44e"
+BASELINE_HEAD = "a82127eb725f18e69891303138a63804658fc6a6"
 SELECTED_ELEMENT_IDS = (
     "complex.feature.hot_tub_placeholder",
     "complex.fireplace.fireplace_masonry_body",

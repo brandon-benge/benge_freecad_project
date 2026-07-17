@@ -1,6 +1,6 @@
 """Typed translation of benge_freecad_project/config.py at commit 76b8d75."""
 
-from python_cad_tools.units import FOOT, INCH
+from python_cad_tools.units import FOOT, INCH, MM
 
 PROJECT_NAME = "Benge Property"
 
@@ -69,6 +69,9 @@ HOUSE_DEPTH = 1 * INCH
 HOUSE_HEIGHT = UPPER_DECK_ELEVATION + ROOF_HEIGHT_ABOVE_UPPER
 HOUSE_WIDTH = UPPER_DECK_WIDTH
 DOOR_WIDTH = 6 * FOOT
+DOOR_HEIGHT = 7 * FOOT
+
+SECTION_CUT_X = 4000.0 * MM
 
 HOUSE_COLOR = (0.35, 0.43, 0.50)
 DECK_COLOR = (0.45, 0.27, 0.12)

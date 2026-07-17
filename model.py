@@ -7,8 +7,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-import drawing_annotations  # noqa: F401 — registers atexit handler for post-build annotation
-
 from python_cad_tools.context import BuildContext
 from python_cad_tools.elements import DesignElement, DesignModel, Dimensions, IfcMapping, MaterialSpec, Placement
 from python_cad_tools.geometry import box, cylinder_between, prism_between, sloped_pool
@@ -283,7 +281,7 @@ def build_model(context: BuildContext) -> DesignModel:
     builder.add_box("fireplace", "FireplaceOpening", INCH, cfg.FIREPLACE_OPENING_WIDTH, cfg.FIREPLACE_OPENING_HEIGHT, fireplace_face_x, fireplace_center_y - cfg.FIREPLACE_OPENING_WIDTH / 2, cfg.UPPER_DECK_ELEVATION + 12 * INCH, (0.03, 0.03, 0.03))
     builder.add_box("fireplace", "ElectricFireplaceGlow", 1.5 * INCH, cfg.FIREPLACE_OPENING_WIDTH - 4 * INCH, cfg.FIREPLACE_OPENING_HEIGHT - 6 * INCH, fireplace_face_x + INCH, fireplace_center_y - (cfg.FIREPLACE_OPENING_WIDTH - 4 * INCH) / 2, cfg.UPPER_DECK_ELEVATION + 15 * INCH, (0.90, 0.28, 0.08))
     builder.add_box("fireplace", "FireplaceTV", INCH, cfg.TV_WIDTH, cfg.TV_HEIGHT, fireplace_face_x + 1.5 * INCH, fireplace_center_y - cfg.TV_WIDTH / 2, cfg.UPPER_DECK_ELEVATION + 56 * INCH, (0.02, 0.02, 0.025))
-    builder.add_box("feature", "SlidingDoor", cfg.DOOR_WIDTH, 3 * INCH, 7 * cfg.FOOT, 3 * cfg.FOOT, -1.5 * INCH, cfg.UPPER_DECK_ELEVATION, (0.55, 0.70, 0.82), drawing_label=True)
+    builder.add_box("feature", "SlidingDoor", cfg.DOOR_WIDTH, 3 * INCH, cfg.DOOR_HEIGHT, 3 * cfg.FOOT, -1.5 * INCH, cfg.UPPER_DECK_ELEVATION, (0.55, 0.70, 0.82), drawing_label=True)
 
     kitchen_x = 10.5 * cfg.FOOT
     kitchen_y = -2.5 * cfg.FOOT

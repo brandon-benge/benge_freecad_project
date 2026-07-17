@@ -1,17 +1,17 @@
 {
   "baseline": {
     "element_count": 236,
-    "head": "6e296e0521f612c8d90f805dffd94c649ee4b44e",
+    "head": "a82127eb725f18e69891303138a63804658fc6a6",
     "model_id": "benge.property",
     "model_metadata": {
       "project": "Benge Property CAD",
       "source_authority": "https://github.com/brandon-benge/benge_freecad_project",
-      "source_commit": "6e296e0521f612c8d90f805dffd94c649ee4b44e"
+      "source_commit": "a82127eb725f18e69891303138a63804658fc6a6"
     },
     "model_name": "Benge Property",
     "source_sha256": {
-      "config.py": "93aea29b92f8e534a91c0e170cfb28f2e24fa4ee2e0842a9ec753b43f0591d0f",
-      "model.py": "5cfb62fdeebade6df4b899d96e40c12b18e01258d6c93740033937a36f0f5a0d"
+      "config.py": "e1bddf5c8b6fa6db4022a3dc89d3a73f3ca01b2012193e72d52ec71642b9a0bb",
+      "model.py": "aa1f40b92af898f7ce0e417954f713b1a5d3875fc9e1adcecea23491b13f2655"
     }
   },
   "contract": "benge-property-cad-model-contract-v1",

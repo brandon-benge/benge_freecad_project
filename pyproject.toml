@@ -28,6 +28,7 @@ dev = [
 schema-version = 1
 config = "config"
 model = "model:build_model"
+drawing-annotations = "drawing_annotations:build_annotations"
 source-inputs = ["config.py", "drawing_annotations.py", "model.py", "pyproject.toml"]
 output-directory = "generated"
 default-formats = ["step", "ifc", "glb", "drawings", "quantities"]
@@ -40,7 +41,7 @@ addopts = "-q"
 
 [tool.mypy]
 python_version = "3.12"
-files = ["model.py", "config.py"]
+files = ["model.py", "config.py", "drawing_annotations.py"]
 ignore_missing_imports = true
 check_untyped_defs = true
 warn_unused_ignores = true
