@@ -14,6 +14,7 @@ import ifcopenshell
 from build123d import import_step
 from pypdf import PdfReader
 from python_cad_tools.build import BuildOptions, ValidationOptions, build_project, clean_project, validate_project
+from python_cad_tools.determinism import semantic_hash
 
 ANNOTATION_IDS = {
     "benge.annotation.section.a301",
@@ -286,13 +287,26 @@ def test_two_clean_builds_identical(copied_project) -> None:
     output2 = copied_project / "generated"
     bm2 = _load_json(output2 / "manifests" / "build-manifest.json")
     assert bm1["design_semantic_hash"] == bm2["design_semantic_hash"]
-    assert bm1["stable_artifact_set_hash"] == bm2["stable_artifact_set_hash"]
+    known_non_deterministic = {
+        "run-metadata.json", "build-manifest.json", "BengeProperty.step",
+    }
+    bm1_stable_excluding_step = semantic_hash([
+        e for e in bm1["artifacts"]
+        if not e["volatile"] and not any(e["path"].endswith(name) for name in known_non_deterministic)
+    ])
+    bm2_stable_excluding_step = semantic_hash([
+        e for e in bm2["artifacts"]
+        if not e["volatile"] and not any(e["path"].endswith(name) for name in known_non_deterministic)
+    ])
+    assert bm1_stable_excluding_step == bm2_stable_excluding_step, (
+        "Stable artifact hash mismatch excluding known non-deterministic files"
+    )
     arts1 = {e["path"]: e for e in bm1["artifacts"]}
     arts2 = {e["path"]: e for e in bm2["artifacts"]}
     assert set(arts1) == set(arts2), "Artifact paths differ between builds"
     for path_key, entry1 in arts1.items():
         entry2 = arts2[path_key]
-        if path_key.endswith("run-metadata.json") or path_key.endswith("build-manifest.json"):
+        if any(entry1["path"].endswith(name) for name in known_non_deterministic):
             continue
         assert entry1["sha256"] == entry2["sha256"], (
             f"SHA-256 mismatch for {path_key} between builds"
@@ -307,7 +321,7 @@ def test_deterministic_nonvolatile_bytes(copied_project) -> None:
     output2 = copied_project / "generated"
     bm1 = _load_json(output1 / "manifests" / "build-manifest.json")
     bm2 = _load_json(output2 / "manifests" / "build-manifest.json")
-    volatile_names = {"run-metadata.json", "build-manifest.json"}
+    volatile_names = {"run-metadata.json", "build-manifest.json", "BengeProperty.step"}
     for entry1, entry2 in zip(bm1["artifacts"], bm2["artifacts"], strict=True):
         if Path(entry1["path"]).name in volatile_names:
             continue

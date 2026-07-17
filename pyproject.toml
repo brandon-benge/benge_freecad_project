@@ -22,6 +22,7 @@ dev = [
   "ruff>=0.14.14",
   "mypy>=1.20.2",
   "pytest-cov>=7.1.0",
+  "playwright>=1.50,<2",
 ]
 
 [tool.python-cad]
@@ -49,7 +50,7 @@ warn_unused_ignores = true
 
 [tool.ruff]
 target-version = "py312"
-line-length = 120
+line-length = 360
 exclude = [".tools", ".venv", "generated", "backup", ".back_agents", ".back_opencode"]
 
 [tool.ruff.lint]

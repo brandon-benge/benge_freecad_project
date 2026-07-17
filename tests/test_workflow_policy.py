@@ -176,10 +176,10 @@ def test_locks_in_requirements_locks():
     locks_dir = PROJECT_ROOT / "requirements" / "locks"
     assert locks_dir.is_dir()
     expected = [
-        "dev-py312-ubuntu-x86_64.lock",
-        "dev-py313-ubuntu-x86_64.lock",
-        "dev-py312-macos-arm64.lock",
-        "dev-py313-macos-arm64.lock",
+        "dev-ubuntu-x86_64-py312.lock",
+        "dev-ubuntu-x86_64-py313.lock",
+        "dev-macos-arm64-py312.lock",
+        "dev-macos-arm64-py313.lock",
     ]
     for name in expected:
         assert (locks_dir / name).is_file(), f"Missing lock: {name}"
