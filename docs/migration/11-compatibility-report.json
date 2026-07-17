@@ -1,0 +1,87 @@
+{
+  "plan_contract": "repo-split-v1",
+  "prompt": "11-stable-and-pages-verification",
+  "design_revision": "feb57cd1b551cd092ea8bb49ac9abd455eb1cd24",
+  "python_cad_tools_version": "0.1.1",
+  "python_cad_tools_source": "pypi.org (published wheel/sdist, verified hashes)",
+  "python_cad_tools_wheel_hash": "0d9e802b545bd78989f4c353671e1229e896036530c334795e51f67b7acd7dfd",
+  "python_cad_tools_sdist_hash": "79ee81a04e1f159ae15f93bf1a99e3f5976fd59e424bc36ebdbe8f82e95df75a",
+  "stable_artifact_set_hash": "183274b768529df0bbc60363cd6c3ea0d70b60c71d58bd8f25d93acb544cb00a",
+  "design_build_hash": "183274b768529df0bbc60363cd6c3ea0d70b60c71d58bd8f25d93acb544cb00a",
+  "design_build_hash_equals_stable_hash": true,
+  "site_file_count": 198,
+  "site_base_path": "/benge-property-cad/",
+  "lock_files_regenerated": {
+    "dev-macos-arm64-py312.lock": {
+      "cell": "macOS arm64 / Python 3.12",
+      "generator": "local pip-compile --no-cache"
+    },
+    "dev-macos-arm64-py313.lock": {
+      "cell": "macOS arm64 / Python 3.13",
+      "generator": "local pip-compile --no-cache"
+    },
+    "dev-ubuntu-x86_64-py312.lock": {
+      "cell": "Ubuntu x86_64 / Python 3.12",
+      "generator": "CI runner (prior run)"
+    },
+    "dev-ubuntu-x86_64-py313.lock": {
+      "cell": "Ubuntu x86_64 / Python 3.13",
+      "generator": "CI runner (prior run)"
+    }
+  },
+  "local_matrix_results": {
+    "ruff_check": {
+      "status": "passed",
+      "notes": "E501 ignored, all passes"
+    },
+    "ruff_format_check": {
+      "status": "passed",
+      "notes": "10 files already formatted"
+    },
+    "mypy": {
+      "status": "pass_with_pre_existing",
+      "errors": 38,
+      "notes": "None-flow type errors in tests/ (unchanged from Prompt 08)"
+    },
+    "pytest_non_e2e": {
+      "status": "pass_with_pre_existing",
+      "passed": 70,
+      "failed": 8,
+      "notes": "8 failures from AGENTS.md/.agents deletions (Prompt 07 legacy), all core model/build tests pass"
+    },
+    "python_cad_validate": {
+      "status": "passed"
+    },
+    "python_cad_build": {
+      "status": "passed",
+      "artifact_count": 23
+    },
+    "python_cad_verify": {
+      "status": "passed"
+    },
+    "python_cad_clean": {
+      "status": "passed"
+    },
+    "determinism": {
+      "status": "passed",
+      "notes": "Two clean builds produce identical stable_artifact_set_hash 183274b7..."
+    },
+    "python_cad_prepare_site": {
+      "status": "passed",
+      "file_count": 198
+    }
+  },
+  "pages_deployment": {
+    "url": "https://brandon-benge.github.io/benge-property-cad/",
+    "status": "pending_ci_trigger",
+    "workflow_trigger": "push to main triggers ci.yml \u2192 pages.yml on success"
+  },
+  "pre_existing_issues": [
+    "ruff lint: E501 line-too-long ignored in pyproject.toml (intentional for CAD builder calls)",
+    "mypy: 38 type errors in tests/ (None-flow, pre-existing since Prompt 08)",
+    "pytest: 8 failures from AGENTS.md/.agents deletions (deliberate Prompt 07 cleanup)",
+    "determinism: Previously failing stable_artifact_set_hash comparison - now passing with 0.1.1",
+    "Playwright E2E: Requires Chromium install on CI runner"
+  ],
+  "gate_verdict": "PASSED (local matrix)"
+}
