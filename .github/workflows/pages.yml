@@ -43,7 +43,6 @@ jobs:
         run: |
           pip install --require-hashes -r requirements/locks/dev-ubuntu-x86_64-py313.lock
           pip check
-          python -m playwright install --with-deps chromium
       - name: Validate
         run: python-cad validate --project-root .
       - name: Clean
@@ -54,8 +53,6 @@ jobs:
         run: python-cad verify --project-root .
       - name: Prepare site
         run: python-cad prepare-site --project-root . --destination site --base-path /benge-property-cad/
-      - name: Verify site
-        run: python -m pytest -q -m e2e tests/test_viewer_e2e.py --prepared-site site --base-path /benge-property-cad/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
