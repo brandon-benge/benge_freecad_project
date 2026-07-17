@@ -229,7 +229,7 @@ jobs:
           import importlib.metadata
           ver = importlib.metadata.version('python-cad-tools')
           print(f'python-cad-tools version: {ver}')
-          assert ver == '0.1.1', f'Expected 0.1.1, got {ver}'
+          assert ver == '0.1.3.dev2', f'Expected 0.1.3.dev2, got {ver}'
           "
           python -c "
           import python_cad_tools
