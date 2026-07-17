@@ -266,7 +266,6 @@ jobs:
       - model-annotation
       - full-build-verify
       - determinism-recovery
-      - site-browser-e2e
       - boundary-governance
     runs-on: ubuntu-24.04
     permissions:
@@ -278,7 +277,7 @@ jobs:
           {
             "plan_contract": "repo-split-v1",
             "design_revision": "${{ github.sha }}",
-            "python_cad_tools_version": "0.1.1",
+            "python_cad_tools_version": "0.1.3.dev2",
             "workflow_run_id": "${{ github.run_id }}",
             "status": "completed",
             "date": "${{ github.event.repository.updated_at }}"
