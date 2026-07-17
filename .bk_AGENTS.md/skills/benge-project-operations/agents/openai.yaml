@@ -1,6 +1,0 @@
-interface:
-  display_name: "Benge Project Operations"
-  short_description: "Maintain project dependencies, CI, and governance"
-  default_prompt: "Use $benge-project-operations for dependency, CI, and governance tasks."
-policy:
-  allow_implicit_invocation: false

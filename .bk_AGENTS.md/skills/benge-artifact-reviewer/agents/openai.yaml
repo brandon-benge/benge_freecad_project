@@ -1,6 +1,0 @@
-interface:
-  display_name: "Benge Artifact Reviewer"
-  short_description: "Review generated CAD artifacts"
-  default_prompt: "Use $benge-artifact-reviewer to review generated project outputs."
-policy:
-  allow_implicit_invocation: false

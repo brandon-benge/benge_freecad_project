@@ -1,6 +1,0 @@
-interface:
-  display_name: "Benge Design Maintainer"
-  short_description: "Design and maintain Benge Property CAD source"
-  default_prompt: "Use $benge-design-maintainer for design and CAD implementation tasks."
-policy:
-  allow_implicit_invocation: false

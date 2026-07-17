@@ -1,6 +1,0 @@
-interface:
-  display_name: "Save"
-  short_description: "Save verified changes with exclusive autocommit"
-  default_prompt: "Use $save to save verified repository changes through the exclusive autocommit tool."
-policy:
-  allow_implicit_invocation: false

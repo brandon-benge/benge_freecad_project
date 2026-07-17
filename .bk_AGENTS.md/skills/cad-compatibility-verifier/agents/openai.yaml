@@ -1,6 +1,0 @@
-interface:
-  display_name: "CAD Compatibility Verifier"
-  short_description: "Verify CAD toolchain compatibility"
-  default_prompt: "Use $cad-compatibility-verifier to verify the complete toolchain."
-policy:
-  allow_implicit_invocation: false
