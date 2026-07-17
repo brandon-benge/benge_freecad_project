@@ -2,7 +2,7 @@
 
 from python_cad_tools.units import FOOT, INCH
 
-PROJECT_NAME = "BengeComplexFunctional"
+PROJECT_NAME = "Benge Property"
 
 UPPER_DECK_WIDTH = 24.5 * FOOT
 UPPER_DECK_DEPTH = 16 * FOOT

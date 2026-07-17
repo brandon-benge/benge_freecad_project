@@ -1,18 +1,17 @@
 {
   "baseline": {
     "element_count": 236,
-    "head": "df58179d506e52dd6cb771afd7b5b719a086cfc3",
-    "model_id": "functional.benge_complex",
+    "head": "6e296e0521f612c8d90f805dffd94c649ee4b44e",
+    "model_id": "benge.property",
     "model_metadata": {
-      "fixture_role": "complex functional regression project",
-      "source_authority": "translated snapshot; no network access during builds",
-      "source_commit": "76b8d75c88d606611a82d135a45fc9be7ce840fb",
-      "translated_from": "https://github.com/brandon-benge/benge_freecad_project"
+      "project": "Benge Property CAD",
+      "source_authority": "https://github.com/brandon-benge/benge_freecad_project",
+      "source_commit": "6e296e0521f612c8d90f805dffd94c649ee4b44e"
     },
-    "model_name": "BengeComplexFunctional",
+    "model_name": "Benge Property",
     "source_sha256": {
-      "config.py": "dff4d8c71d96e3809922dc5bbebb228ecfd4e0cca7555d88aaf5c5d4f17c9c2f",
-      "model.py": "3bcf06c6012f6ecb121b38983e5e090399674e96a94d88a10ee5bd9fe6e358bd"
+      "config.py": "93aea29b92f8e534a91c0e170cfb28f2e24fa4ee2e0842a9ec753b43f0591d0f",
+      "model.py": "5cfb62fdeebade6df4b899d96e40c12b18e01258d6c93740033937a36f0f5a0d"
     }
   },
   "contract": "benge-property-cad-model-contract-v1",
@@ -274,31 +273,31 @@
       "legacy_observations": [
         {
           "ifc_class": "IfcProject",
-          "legacy_global_id": "1Rq$eA5xrVhPz2uxr7Vvdi",
-          "legacy_name": "BengeComplexFunctional",
+          "legacy_global_id": "2upd7zkZPV_wUsWnA8LpE1",
+          "legacy_name": "Benge Property",
           "relation": null
         },
         {
           "ifc_class": "IfcSite",
-          "legacy_global_id": "1aUyIlh_bOvgjdQXphWrw8",
+          "legacy_global_id": "15eF1pFD1HUulvzSBn8oIH",
           "legacy_name": "Default Site",
           "relation": null
         },
         {
           "ifc_class": "IfcBuilding",
-          "legacy_global_id": "0CY$wYLVnU5eReHoLpQgDz",
+          "legacy_global_id": "2B2fmprzHHlBywjj4dnZ4$",
           "legacy_name": "Default Building",
           "relation": null
         },
         {
           "ifc_class": "IfcBuildingStorey",
-          "legacy_global_id": "1YGQRYyH1K2uG6ph5b_VBd",
+          "legacy_global_id": "0m$xzGtTTTtfYTSS_lUfoy",
           "legacy_name": "Default Storey",
           "relation": null
         },
         {
           "ifc_class": "IfcRelAggregates",
-          "legacy_global_id": "01r8694NLMGxVTwOrHhUpT",
+          "legacy_global_id": "3GJO7tlDrQO8tKFiS9Jhso",
           "legacy_name": null,
           "relation": {
             "from": "IfcProject",
@@ -309,7 +308,7 @@
         },
         {
           "ifc_class": "IfcRelAggregates",
-          "legacy_global_id": "0$AZlwAXDQphUxevVGQX4g",
+          "legacy_global_id": "1K6Okz$dTUcQkLXv$PrUf_",
           "legacy_name": null,
           "relation": {
             "from": "IfcSite",
@@ -320,7 +319,7 @@
         },
         {
           "ifc_class": "IfcRelAggregates",
-          "legacy_global_id": "0KfYcRoi5KEgWCO$nqHy1n",
+          "legacy_global_id": "3$Bnczs4fUfe2QLZPGPgvM",
           "legacy_name": null,
           "relation": {
             "from": "IfcBuilding",

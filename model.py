@@ -124,9 +124,9 @@ class ModelBuilder:
             color_rgb=color,
             ifc_mapping=IfcMapping("IfcBuildingElementProxy", "NOTDEFINED"),
             storey="Exterior Concept",
-            tags={"complex-functional", _slug(category)},
+            tags={"benge-property", _slug(category)},
             properties=values,
-            source_module="functional.benge_complex.model",
+            source_module="model",
         )
         self.elements.append(element)
         return element
@@ -400,13 +400,13 @@ def build_model(context: BuildContext) -> DesignModel:
     )
 
     return DesignModel(
-        id="functional.benge_complex",
+        id="benge.property",
         name=cfg.PROJECT_NAME,
+        artifact_stem="BengeProperty",
         elements=builder.elements,
         metadata={
-            "fixture_role": "complex functional regression project",
-            "translated_from": "https://github.com/brandon-benge/benge_freecad_project",
-            "source_commit": "76b8d75c88d606611a82d135a45fc9be7ce840fb",
-            "source_authority": "translated snapshot; no network access during builds",
+            "project": "Benge Property CAD",
+            "source_authority": "https://github.com/brandon-benge/benge_freecad_project",
+            "source_commit": context.source_revision or "unknown",
         },
     )

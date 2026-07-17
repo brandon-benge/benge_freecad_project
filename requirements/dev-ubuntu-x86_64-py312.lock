@@ -1,0 +1,4 @@
+# Ubuntu x86_64 Python 3.12 dev lock — PENDING
+# This cell is unavailable on the local macOS arm64 host.
+# Generate natively on Ubuntu x86_64 CI via Section 10 procedure.
+# See docs/migration/03-identity-boundary-report.md for status.

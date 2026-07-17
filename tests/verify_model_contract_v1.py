@@ -20,7 +20,7 @@ from python_cad_tools.context import BuildContext
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "model_contract_v1.json"
-BASELINE_HEAD = "df58179d506e52dd6cb771afd7b5b719a086cfc3"
+BASELINE_HEAD = "6e296e0521f612c8d90f805dffd94c649ee4b44e"
 SELECTED_ELEMENT_IDS = (
     "complex.feature.hot_tub_placeholder",
     "complex.fireplace.fireplace_masonry_body",
@@ -43,9 +43,6 @@ def _sha256(path: Path) -> str:
 
 
 def _load_baseline_model() -> Any:
-    # The legacy annotation module registers an atexit callback while model.py is
-    # imported. Suppress registration in this verifier so semantic inspection
-    # cannot mutate generated drawings when the verifier exits.
     original_register = atexit.register
     atexit.register = lambda function, *args, **kwargs: function  # type: ignore[assignment]
     try:
@@ -56,7 +53,7 @@ def _load_baseline_model() -> Any:
             import config
             import model
 
-            context = BuildContext(ROOT, ROOT / "generated", config, BASELINE_HEAD)
+            context = BuildContext(ROOT, config, BASELINE_HEAD, source_dirty=False)
             return model.build_model(context)
         finally:
             sys.path.remove(str(ROOT))
@@ -107,7 +104,7 @@ def _aggregate(records: list[dict[str, Any]], key: str | None = None) -> Any:
 
 
 def _legacy_ifc_spatial() -> list[dict[str, Any]]:
-    path = ROOT / "generated" / "ifc" / "BengeComplexFunctional.ifc"
+    path = ROOT / "generated" / "ifc" / "BengeProperty.ifc"
     if not path.is_file():
         raise AssertionError(f"baseline IFC is missing: {path}")
     ifc = ifcopenshell.open(path)
@@ -250,7 +247,7 @@ def _validate_internal_consistency(contract: dict[str, Any]) -> None:
 
 
 def _verify_generated_semantics(contract: dict[str, Any]) -> None:
-    design_path = ROOT / "generated" / "manifests" / "design-elements.json"
+    design_path = ROOT / "generated" / "manifests" / "design-manifest.json"
     quantities_path = ROOT / "generated" / "quantities" / "quantities.json"
     step_validation_path = ROOT / "generated" / "step" / "validation.json"
     for path in (design_path, quantities_path, step_validation_path):
@@ -282,7 +279,7 @@ def _verify_generated_semantics(contract: dict[str, Any]) -> None:
             "material_id": row["material_id"],
             "volume_mm3": _rounded(row["volume_mm3"]),
         }
-        for row in quantities
+        for row in quantities["records"]
     ]
     assert {
         "by_category": _aggregate(normalized_quantities, "category"),

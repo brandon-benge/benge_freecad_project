@@ -3,10 +3,11 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "python-cad-project"
+name = "benge-property-cad"
 version = "0.1.0"
 requires-python = ">=3.12,<3.14"
 dependencies = [
+  "python-cad-tools==0.1.0rc1",
   "build123d>=0.11.1,<0.12",
   "ifcopenshell>=0.8.5,<0.9",
   "trimesh>=4.12,<5",
@@ -16,13 +17,38 @@ dependencies = [
   "pypdf>=6,<7",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.14.14",
+  "mypy>=1.20.2",
+  "pytest-cov>=7.1.0",
+]
+
+[tool.python-cad]
+schema-version = 1
+config = "config"
+model = "model:build_model"
+source-inputs = ["config.py", "drawing_annotations.py", "model.py", "pyproject.toml"]
+output-directory = "generated"
+default-formats = ["step", "ifc", "glb", "drawings", "quantities"]
+
+[tool.setuptools.packages.find]
+include = []
+
 [tool.pytest.ini_options]
-pythonpath = [".tools", "."]
+addopts = "-q"
 
 [tool.mypy]
 python_version = "3.12"
 files = ["model.py", "config.py"]
-mypy_path = [".tools"]
 ignore_missing_imports = true
 check_untyped_defs = true
 warn_unused_ignores = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+exclude = [".tools", ".venv", "generated", "backup", ".back_agents", ".back_opencode"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]

@@ -1,4 +1,4 @@
-name: Build and deploy design viewer
+name: Build and deploy Benge Property design viewer
 
 on:
   push:
@@ -24,9 +24,15 @@ jobs:
           python-version: "3.13"
           cache: pip
       - name: Install CAD dependencies
-        run: pip install -r .tools/requirements/runtime.lock
+        run: |
+          if [ -f requirements/runtime-ubuntu-x86_64-py313.lock ] && head -1 requirements/runtime-ubuntu-x86_64-py313.lock | grep -q "^# "; then
+            pip install --require-hashes -r requirements/runtime-ubuntu-x86_64-py313.lock
+          else
+            echo "Ubuntu x86_64 Python 3.13 runtime lock is PENDING — install via Section 10 procedure (Prompt 09)"
+            exit 1
+          fi
       - name: Generate design artifacts
-        run: python build.py
+        run: python-cad build
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
