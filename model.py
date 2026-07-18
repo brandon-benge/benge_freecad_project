@@ -395,22 +395,67 @@ def build_model(context: BuildContext) -> DesignModel:
         ],
     )
 
+    # Shed-style roof attached high on the house wall and sloping down toward
+    # the outside edge of the upper deck.
     roof_x = -cfg.ROOF_OVERHANG
-    roof_y = -cfg.UPPER_DECK_DEPTH - cfg.ROOF_OVERHANG
+    roof_front_y = -cfg.UPPER_DECK_DEPTH - cfg.ROOF_OVERHANG
+    roof_back_y = cfg.ROOF_OVERHANG
     roof_w = cfg.UPPER_DECK_WIDTH + 2 * cfg.ROOF_OVERHANG
-    roof_d = cfg.UPPER_DECK_DEPTH + 2 * cfg.ROOF_OVERHANG
-    roof_z = cfg.UPPER_DECK_ELEVATION + cfg.ROOF_HEIGHT_ABOVE_UPPER
-    builder.add_box(
+    roof_back_z = cfg.UPPER_DECK_ELEVATION + cfg.ROOF_HEIGHT_ABOVE_UPPER
+    if cfg.ROOF_STYLE != "shed":
+        raise ValueError(f"Unsupported ROOF_STYLE: {cfg.ROOF_STYLE!r}; expected 'shed'")
+    roof_drop = cfg.ROOF_SLOPE_DROP
+    roof_front_z = roof_back_z - roof_drop
+
+    builder.add_prism(
         "roof",
-        "UpperDeckFullCover",
+        "UpperDeckShedRoofCover",
+        (roof_x + roof_w / 2, roof_back_y, roof_back_z),
+        (roof_x + roof_w / 2, roof_front_y, roof_front_z),
         roof_w,
-        roof_d,
         cfg.ROOF_THICKNESS,
-        roof_x,
-        roof_y,
-        roof_z,
         (0.18, 0.20, 0.22),
-        drawing_label=True,
+    )
+
+    if cfg.ROOF_ATTACH_TO_HOUSE:
+        builder.add_box(
+            "roof-framing",
+            "RoofHouseLedger",
+            roof_w,
+            cfg.ROOF_RAFTER_WIDTH,
+            cfg.ROOF_RAFTER_HEIGHT,
+            roof_x,
+            -cfg.ROOF_RAFTER_WIDTH / 2,
+            roof_back_z - cfg.ROOF_RAFTER_HEIGHT,
+            (0.92, 0.92, 0.90),
+            drawing_label=True,
+        )
+
+    rafter_x = roof_x + cfg.ROOF_RAFTER_SPACING
+    rafter_index = 1
+    while rafter_x < roof_x + roof_w - cfg.ROOF_RAFTER_WIDTH:
+        builder.add_prism(
+            "roof-framing",
+            f"RoofRafter_{rafter_index:02d}",
+            (rafter_x, roof_back_y, roof_back_z - cfg.ROOF_THICKNESS),
+            (rafter_x, roof_front_y, roof_front_z - cfg.ROOF_THICKNESS),
+            cfg.ROOF_RAFTER_WIDTH,
+            cfg.ROOF_RAFTER_HEIGHT,
+            (0.92, 0.92, 0.90),
+        )
+        rafter_x = rafter_x + cfg.ROOF_RAFTER_SPACING
+        rafter_index += 1
+
+    builder.add_box(
+        "roof-framing",
+        "RoofFrontBeam",
+        roof_w,
+        cfg.BEAM_WIDTH,
+        cfg.BEAM_HEIGHT,
+        roof_x,
+        roof_front_y,
+        roof_front_z - cfg.ROOF_THICKNESS - cfg.BEAM_HEIGHT,
+        cfg.RAILING_COLOR,
     )
     builder.add_box(
         "roof",
@@ -419,77 +464,70 @@ def build_model(context: BuildContext) -> DesignModel:
         cfg.ROOF_RAFTER_WIDTH,
         cfg.ROOF_FASCIA_HEIGHT,
         roof_x,
-        roof_y,
-        roof_z - cfg.ROOF_FASCIA_HEIGHT,
+        roof_front_y,
+        roof_front_z - cfg.ROOF_FASCIA_HEIGHT,
         cfg.RAILING_COLOR,
     )
-    builder.add_box(
+    builder.add_prism(
         "roof",
         "RoofLeftFascia",
+        (roof_x, roof_back_y, roof_back_z),
+        (roof_x, roof_front_y, roof_front_z),
         cfg.ROOF_RAFTER_WIDTH,
-        roof_d,
         cfg.ROOF_FASCIA_HEIGHT,
-        roof_x,
-        roof_y,
-        roof_z - cfg.ROOF_FASCIA_HEIGHT,
         cfg.RAILING_COLOR,
     )
-    builder.add_box(
+    builder.add_prism(
         "roof",
         "RoofRightFascia",
+        (roof_x + roof_w, roof_back_y, roof_back_z),
+        (roof_x + roof_w, roof_front_y, roof_front_z),
         cfg.ROOF_RAFTER_WIDTH,
-        roof_d,
         cfg.ROOF_FASCIA_HEIGHT,
-        roof_x + roof_w - cfg.ROOF_RAFTER_WIDTH,
-        roof_y,
-        roof_z - cfg.ROOF_FASCIA_HEIGHT,
         cfg.RAILING_COLOR,
     )
-    rafter_x = roof_x + cfg.ROOF_RAFTER_SPACING
-    rafter_index = 1
-    while rafter_x < roof_x + roof_w - cfg.ROOF_RAFTER_WIDTH:
-        builder.add_box(
-            "roof-framing",
-            f"RoofRafter_{rafter_index:02d}",
-            cfg.ROOF_RAFTER_WIDTH,
-            roof_d,
-            cfg.ROOF_RAFTER_HEIGHT,
-            rafter_x,
-            roof_y,
-            roof_z - cfg.ROOF_RAFTER_HEIGHT,
-            (0.92, 0.92, 0.90),
-        )
-        rafter_x = rafter_x + cfg.ROOF_RAFTER_SPACING
-        rafter_index += 1
+
     post = 8 * INCH
-    for index, (post_x, post_y) in enumerate(
-        [
-            (ZERO, -cfg.UPPER_DECK_DEPTH),
-            (cfg.UPPER_DECK_WIDTH - post, -cfg.UPPER_DECK_DEPTH),
-            (ZERO, -post),
-            (cfg.UPPER_DECK_WIDTH - post, -post),
-        ],
-        1,
-    ):
+    front_post_height = roof_front_z - cfg.ROOF_THICKNESS - cfg.BEAM_HEIGHT - cfg.UPPER_DECK_ELEVATION
+    front_post_count = max(2, int(cfg.ROOF_FRONT_POSTS))
+    front_post_span = cfg.UPPER_DECK_WIDTH - post
+    for index in range(front_post_count):
+        ratio = index / (front_post_count - 1)
+        post_x = front_post_span * ratio
         builder.add_box(
             "roof-framing",
-            f"RoofPost_{index}",
+            f"RoofFrontPost_{index + 1}",
             post,
             post,
-            cfg.ROOF_HEIGHT_ABOVE_UPPER,
+            front_post_height,
             post_x,
-            post_y,
+            -cfg.UPPER_DECK_DEPTH,
             cfg.UPPER_DECK_ELEVATION,
             (0.92, 0.92, 0.90),
         )
 
+    if not cfg.ROOF_ATTACH_TO_HOUSE:
+        rear_post_height = roof_back_z - cfg.ROOF_THICKNESS - cfg.UPPER_DECK_ELEVATION
+        for index, post_x in enumerate((ZERO, cfg.UPPER_DECK_WIDTH - post), 1):
+            builder.add_box(
+                "roof-framing",
+                f"RoofRearPost_{index}",
+                post,
+                post,
+                rear_post_height,
+                post_x,
+                -post,
+                cfg.UPPER_DECK_ELEVATION,
+                (0.92, 0.92, 0.90),
+            )
+
     fan_x = cfg.UPPER_DECK_WIDTH / 2
     fan_y = -cfg.UPPER_DECK_DEPTH / 2
-    fan_z = roof_z - 28 * INCH
+    fan_z = (roof_back_z + roof_front_z) / 2 - 28 * INCH
     builder.add_cylinder(
         "feature",
         "CoveredDeckFanDownrod",
-        (fan_x, fan_y, roof_z - cfg.ROOF_RAFTER_HEIGHT),
+        (fan_x, fan_y, (roof_back_z + roof_front_z) / 2 - cfg.ROOF_RAFTER_HEIGHT),
         (fan_x, fan_y, fan_z),
         1.25 * INCH,
         cfg.RAILING_COLOR,
