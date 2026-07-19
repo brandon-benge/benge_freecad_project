@@ -7,29 +7,57 @@ on:
     types: [created]
 
 jobs:
-  opencode:
+  opened-issue:
+    if: github.event_name == 'issues' && github.actor == github.repository_owner
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          model: opencode-go/glm-5.2
+          use_github_token: true
+          prompt: |
+            Work on issue #${{ github.event.issue.number }}.
+
+            Title:
+            ${{ github.event.issue.title }}
+
+            Description:
+            ${{ github.event.issue.body }}
+
+            Make the requested changes, validate them, and update the issue.
+
+  issue-comment:
     if: |
-      github.actor == github.repository_owner && (
-        github.event_name == 'issues' ||
-        contains(github.event.comment.body, ' /oc') ||
+      github.event_name == 'issue_comment' &&
+      github.actor == github.repository_owner &&
+      (
         startsWith(github.event.comment.body, '/oc') ||
-        contains(github.event.comment.body, ' /opencode') ||
         startsWith(github.event.comment.body, '/opencode')
       )
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: write
-      pull-requests: write
       issues: write
+      pull-requests: write
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
-      - name: Run opencode
-        uses: anomalyco/opencode/github@latest
+      - uses: anomalyco/opencode/github@latest
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
