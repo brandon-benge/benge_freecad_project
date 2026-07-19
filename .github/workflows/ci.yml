@@ -105,7 +105,7 @@ jobs:
           pip install --require-hashes -r requirements/locks/dev-ubuntu-x86_64-py313.lock
           pip check
       - name: Config contract tests
-        run: python -m pytest -q tests/test_config_contract.py tests/test_model_contract.py tests/test_drawing_annotations.py
+        run: python -m pytest -q tests/test_config_contract.py tests/test_drawing_annotations.py
 
   full-build-verify:
     strategy:

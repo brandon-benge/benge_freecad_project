@@ -2,7 +2,8 @@
   "$schema": "https://opencode.ai/config.json",
   "default_agent": "file-design-maintainer",
   "permission": {
-    "specrepo-autocommit": "deny"
+    "specrepo-autocommit": "deny",
+    "start-ui": "deny"
   },
   "agent": {
     "plan": { "disable": true },
@@ -31,6 +32,7 @@
           "cad-compatibility-verifier": "allow"
         },
         "specrepo-autocommit": "deny",
+        "start-ui": "allow",
         "edit": "allow",
         "bash": "allow",
         "lsp": "allow",
@@ -87,6 +89,7 @@
           "file-artifact-reviewer": "allow"
         },
         "specrepo-autocommit": "deny",
+        "start-ui": "allow",
         "edit": "deny",
         "bash": "allow",
         "lsp": "deny",
