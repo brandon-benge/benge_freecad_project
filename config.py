@@ -29,7 +29,7 @@ ROOF_RAFTER_WIDTH = 2 * INCH
 ROOF_RAFTER_HEIGHT = 8 * INCH
 ROOF_RAFTER_SPACING = 24 * INCH
 ROOF_SLOPE_DROP = 30 * INCH
-ROOF_STYLE = "shed"      # shed | flat | gable
+ROOF_STYLE = "shed"  # shed | flat | gable
 ROOF_ATTACH_TO_HOUSE = True
 ROOF_FRONT_POSTS = 2
 

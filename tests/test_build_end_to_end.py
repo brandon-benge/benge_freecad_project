@@ -6,6 +6,7 @@ import csv
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -115,7 +116,7 @@ def test_build_full_default_formats(built_output) -> None:
 
 def _cli(*args: str, cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["python-cad", *args],
+        [sys.executable, "-m", "python_cad_tools.cli", *args],
         cwd=cwd,
         capture_output=True,
         text=True,

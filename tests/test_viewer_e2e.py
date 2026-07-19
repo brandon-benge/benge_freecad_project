@@ -205,7 +205,7 @@ def test_playwright_console_no_errors(server_process) -> None:
         console_errors = []
         page.on("console", lambda msg: console_errors.append(msg.text) if msg.type == "error" else None)
         page.goto(url, timeout=30000)
-        page.wait_for_selector("[data-testid=canvas]", timeout=30000)
+        page.wait_for_selector("[data-testid=viewer-canvas]", timeout=30000)
         assert len(console_errors) == 0, f"Console errors: {console_errors}"
         browser.close()
 
@@ -219,7 +219,7 @@ def test_playwright_model_loaded_indicator(server_process) -> None:
         browser = p.chromium.launch()
         page = browser.new_page()
         page.goto(url, timeout=30000)
-        page.wait_for_selector("[data-testid=model-loaded]", timeout=30000)
+        page.wait_for_function("!document.getElementById('model-loaded').hidden", timeout=30000)
         browser.close()
 
 
@@ -232,8 +232,8 @@ def test_playwright_properties_panel(server_process) -> None:
         browser = p.chromium.launch()
         page = browser.new_page()
         page.goto(url, timeout=30000)
-        page.wait_for_selector("[data-testid=model-loaded]", timeout=30000)
-        element = page.wait_for_selector("[data-testid=properties]", timeout=10000)
+        page.wait_for_function("!document.getElementById('model-loaded').hidden", timeout=30000)
+        element = page.wait_for_selector("[data-testid=selection-properties]", timeout=10000)
         assert element is not None
         browser.close()
 
@@ -247,8 +247,8 @@ def test_playwright_units_switch(server_process) -> None:
         browser = p.chromium.launch()
         page = browser.new_page()
         page.goto(url, timeout=30000)
-        page.wait_for_selector("[data-testid=model-loaded]", timeout=30000)
-        unit_control = page.wait_for_selector("[data-testid=units]", timeout=10000)
+        page.wait_for_function("!document.getElementById('model-loaded').hidden", timeout=30000)
+        unit_control = page.wait_for_selector("[aria-label=\"Measurement units\"]", timeout=10000)
         assert unit_control is not None
         browser.close()
 
@@ -262,9 +262,10 @@ def test_playwright_design_build_hash(server_process) -> None:
         browser = p.chromium.launch()
         page = browser.new_page()
         page.goto(url, timeout=30000)
-        page.wait_for_selector("[data-testid=model-loaded]", timeout=30000)
-        hash_element = page.wait_for_selector("[data-testid=design-build-hash]", timeout=10000)
-        assert hash_element is not None
-        hash_text = hash_element.text_content()
+        page.wait_for_function("!document.getElementById('model-loaded').hidden", timeout=30000)
+        hash_text = page.wait_for_function(
+            "document.getElementById('design-build-hash')?.textContent?.trim() || ''",
+            timeout=10000,
+        ).json_value()
         assert hash_text and len(hash_text.strip()) == 64
         browser.close()
