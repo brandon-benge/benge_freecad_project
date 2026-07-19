@@ -32,6 +32,7 @@ def test_deck_elevations(copied_project) -> None:
 
     assert to_mm(cfg.LOWER_DECK_ELEVATION) > 0
     assert to_mm(cfg.UPPER_DECK_ELEVATION) > to_mm(cfg.LOWER_DECK_ELEVATION)
+    assert to_mm(cfg.UPPER_DECK_DEPTH) == to_mm(20 * cfg.FOOT)
     assert to_mm(cfg.DECK_THICKNESS) > 0
     assert to_mm(cfg.DECK_BOARD_WIDTH) > 0
     assert to_mm(cfg.DECK_BOARD_GAP) > 0
@@ -84,7 +85,8 @@ def test_pool_dimensions(copied_project) -> None:
     assert to_mm(cfg.POOL_WIDTH) > 0
     assert to_mm(cfg.POOL_SHALLOW_DEPTH) > 0
     assert to_mm(cfg.POOL_DEEP_DEPTH) > to_mm(cfg.POOL_SHALLOW_DEPTH)
-    assert to_mm(cfg.PATIO_BORDER) > 0
+    assert to_mm(cfg.POOL_TILE_BORDER) > 0
+    assert to_mm(cfg.POOL_TILE_THICKNESS) > 0
     assert to_mm(cfg.DECK_TO_POOL_CLEARANCE) > 0
 
 
@@ -98,6 +100,8 @@ def test_hot_tub_and_fireplace(copied_project) -> None:
     assert to_mm(cfg.HOT_TUB_WIDTH) > 0
     assert to_mm(cfg.HOT_TUB_DEPTH) > 0
     assert to_mm(cfg.HOT_TUB_ABOVE_DECK) > 0
+    assert to_mm(cfg.HOT_TUB_DECK_WIDTH) == to_mm(17.5 * cfg.FOOT)
+    assert to_mm(cfg.HOT_TUB_DECK_DEPTH) == to_mm(8 * cfg.FOOT)
     assert to_mm(cfg.FIREPLACE_WIDTH) > 0
     assert to_mm(cfg.FIREPLACE_DEPTH) > to_mm(cfg.FIREPLACE_WIDTH)
     assert to_mm(cfg.FIREPLACE_HEIGHT) > to_mm(cfg.UPPER_DECK_ELEVATION)

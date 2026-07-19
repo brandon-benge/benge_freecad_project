@@ -60,7 +60,7 @@ MATERIAL_REGISTRY: dict[tuple[str, Color], tuple[str, float]] = {
     # Railing
     ("railing", cfg.RAILING_COLOR): ("Wood/Metal Railing", 500.0),
     # Site
-    ("site", cfg.PAVER_COLOR): ("Concrete Pavers", 2400.0),
+    ("site", cfg.TILE_COLOR): ("Pool Deck Tile", 2400.0),
     # Skirting
     ("skirting", cfg.SKIRTING_COLOR): ("Pressure-Treated Skirting", 500.0),
     # Stair
@@ -141,13 +141,14 @@ class ModelBuilder:
         *,
         drawing_label: bool = False,
         properties: dict[str, Any] | None = None,
+        dimension_extras: dict[str, float] | None = None,
     ) -> DesignElement:
         return self.add_shape(
             category,
             name,
             box(length, depth, height, origin=(x, y, z)),
             color,
-            Dimensions(to_mm(length), to_mm(depth), to_mm(height)),
+            Dimensions(to_mm(length), to_mm(depth), to_mm(height), extras=dimension_extras or {}),
             placement=(x, y, z),
             drawing_label=drawing_label,
             properties=properties,
@@ -727,8 +728,10 @@ def build_model(context: BuildContext) -> DesignModel:
             (0.22, 0.22, 0.22),
         )
 
-    hot_tub_x = cfg.UPPER_DECK_WIDTH + cfg.LOWER_DECK_WIDTH - cfg.HOT_TUB_WIDTH - cfg.FOOT
-    hot_tub_y = -13 * cfg.FOOT
+    hot_tub_deck_x = cfg.UPPER_DECK_WIDTH + cfg.LOWER_DECK_WIDTH - cfg.HOT_TUB_DECK_WIDTH - cfg.FOOT
+    hot_tub_deck_y = -13 * cfg.FOOT
+    hot_tub_x = hot_tub_deck_x + (cfg.HOT_TUB_DECK_WIDTH - cfg.HOT_TUB_WIDTH) / 2
+    hot_tub_y = hot_tub_deck_y + (cfg.HOT_TUB_DECK_DEPTH - cfg.HOT_TUB_DEPTH) / 2
     builder.add_box(
         "feature",
         "HotTubPlaceholder",
@@ -744,13 +747,17 @@ def build_model(context: BuildContext) -> DesignModel:
     builder.add_box(
         "structure",
         "HotTubPlatform",
-        cfg.HOT_TUB_WIDTH,
-        cfg.HOT_TUB_DEPTH,
+        cfg.HOT_TUB_DECK_WIDTH,
+        cfg.HOT_TUB_DECK_DEPTH,
         cfg.LOWER_DECK_ELEVATION,
-        hot_tub_x,
-        hot_tub_y,
+        hot_tub_deck_x,
+        hot_tub_deck_y,
         ZERO,
         (0.15, 0.15, 0.15),
+        dimension_extras={
+            "deck_width_mm": to_mm(cfg.HOT_TUB_DECK_WIDTH),
+            "deck_depth_mm": to_mm(cfg.HOT_TUB_DECK_DEPTH),
+        },
     )
 
     rail_height = 42 * INCH
@@ -979,17 +986,60 @@ def build_model(context: BuildContext) -> DesignModel:
     # No LowerDeckFrontSkirt needed when stairs span the full deck width
 
     pool_y = -(cfg.LOWER_DECK_DEPTH + 7 * cfg.FOOT + 6 * cfg.FOOT + 15 * cfg.FOOT)
-    pool_x = cfg.PATIO_BORDER
+    pool_x = cfg.POOL_TILE_BORDER
+    # 3' tile ground layer around the pool, composed of four non-overlapping
+    # strips flush with grade. Their union encloses the pool with a 3' border
+    # on every side and does not overlap the pool footprint.
+    border = cfg.POOL_TILE_BORDER
+    tile_thickness = cfg.POOL_TILE_THICKNESS
+    tile_z = -tile_thickness
+    pool_span_x = cfg.POOL_LENGTH + 2 * border
     builder.add_box(
         "site",
-        "PoolPaverPatio",
-        cfg.POOL_LENGTH + 2 * cfg.PATIO_BORDER,
-        cfg.POOL_WIDTH + 2 * cfg.PATIO_BORDER,
-        4 * INCH,
-        pool_x - cfg.PATIO_BORDER,
-        pool_y - cfg.PATIO_BORDER,
-        -4 * INCH,
-        cfg.PAVER_COLOR,
+        "PoolTileBorderNorth",
+        pool_span_x,
+        border,
+        tile_thickness,
+        pool_x - border,
+        pool_y + cfg.POOL_WIDTH,
+        tile_z,
+        cfg.TILE_COLOR,
+        drawing_label=True,
+    )
+    builder.add_box(
+        "site",
+        "PoolTileBorderSouth",
+        pool_span_x,
+        border,
+        tile_thickness,
+        pool_x - border,
+        pool_y - border,
+        tile_z,
+        cfg.TILE_COLOR,
+        drawing_label=True,
+    )
+    builder.add_box(
+        "site",
+        "PoolTileBorderEast",
+        border,
+        cfg.POOL_WIDTH,
+        tile_thickness,
+        pool_x + cfg.POOL_LENGTH,
+        pool_y,
+        tile_z,
+        cfg.TILE_COLOR,
+        drawing_label=True,
+    )
+    builder.add_box(
+        "site",
+        "PoolTileBorderWest",
+        border,
+        cfg.POOL_WIDTH,
+        tile_thickness,
+        pool_x - border,
+        pool_y,
+        tile_z,
+        cfg.TILE_COLOR,
         drawing_label=True,
     )
     pool = sloped_pool(

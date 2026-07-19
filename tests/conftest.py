@@ -100,3 +100,26 @@ def project_import(copied_project: Path) -> Generator[None, None, None]:
         yield
     finally:
         sys.path.remove(str(copied_project))
+
+
+@pytest.fixture
+def model_from_project(copied_project: Path):
+    from python_cad_tools.context import BuildContext
+
+    sys.path.insert(0, str(copied_project))
+    for mod in list(sys.modules):
+        if mod in ("config", "model"):
+            del sys.modules[mod]
+    try:
+        import config as cfg
+        import model
+
+        ctx = BuildContext(
+            project_root=copied_project,
+            config=cfg,
+            source_revision="test",
+            source_dirty=False,
+        )
+        return model.build_model(ctx)
+    finally:
+        sys.path.remove(str(copied_project))
