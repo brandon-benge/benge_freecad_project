@@ -790,6 +790,10 @@ def build_model(context: BuildContext) -> DesignModel:
         dx, dy, run, px, py = line_frame(start, end)
         steps = max(1, math.ceil(abs(to_mm(start_z - end_z)) / to_mm(cfg.MAX_RISER)))
         rise = to_mm(start_z - end_z) / steps
+        direction_x = dx / run
+        direction_y = dy / run
+        riser_thickness = 1.25 * INCH
+        riser_setback = (to_mm(cfg.TREAD_DEPTH) - to_mm(riser_thickness)) / 2
         for index in range(1, steps + 1):
             ratio = index / steps
             center_x = to_mm(start[0]) + dx * ratio
@@ -806,18 +810,30 @@ def build_model(context: BuildContext) -> DesignModel:
                 mm(tread_z),
                 cfg.DECK_COLOR,
             )
+
+            # Put the riser/backboard at the rear edge of the tread (toward
+            # the upper landing).  It was previously centered on the tread,
+            # which made it visibly pass through the walking surface.
+            riser_center_x = center_x - direction_x * riser_setback
+            riser_center_y = center_y - direction_y * riser_setback
             builder.add_box(
                 "stair",
                 f"{prefix}Riser_{index:02d}",
                 width,
-                1.25 * INCH,
+                riser_thickness,
                 mm(abs(rise)),
-                mm(center_x - to_mm(width) / 2),
-                mm(center_y - to_mm(1.25 * INCH) / 2),
+                mm(riser_center_x - to_mm(width) / 2),
+                mm(riser_center_y - to_mm(riser_thickness) / 2),
                 mm(min(tread_z, tread_z + rise)),
                 cfg.SKIRTING_COLOR,
             )
-        for side_name, offset in (("Left", -to_mm(width) / 2), ("Right", to_mm(width) / 2)):
+
+        stair_skirt_width = 2 * INCH
+        stair_skirt_clearance = 0.125 * INCH
+        rail_offset = to_mm(width) / 2
+        skirt_offset = rail_offset + to_mm(stair_skirt_width) / 2 + to_mm(stair_skirt_clearance)
+        for side_name, side_sign in (("Left", -1), ("Right", 1)):
+            offset = side_sign * rail_offset
             start_x = mm(to_mm(start[0]) + px * offset)
             start_y = mm(to_mm(start[1]) + py * offset)
             end_x = mm(to_mm(end[0]) + px * offset)
@@ -838,12 +854,16 @@ def build_model(context: BuildContext) -> DesignModel:
                 rail_thickness / 2,
                 cfg.RAILING_COLOR,
             )
+            skirt_start_x = mm(to_mm(start[0]) + px * side_sign * skirt_offset)
+            skirt_start_y = mm(to_mm(start[1]) + py * side_sign * skirt_offset)
+            skirt_end_x = mm(to_mm(end[0]) + px * side_sign * skirt_offset)
+            skirt_end_y = mm(to_mm(end[1]) + py * side_sign * skirt_offset)
             builder.add_prism(
                 "skirting",
                 f"{prefix}{side_name}StairSkirt",
-                (start_x, start_y, start_z - 8 * INCH),
-                (end_x, end_y, end_z - 8 * INCH),
-                2 * INCH,
+                (skirt_start_x, skirt_start_y, start_z - 8 * INCH),
+                (skirt_end_x, skirt_end_y, end_z - 8 * INCH),
+                stair_skirt_width,
                 10 * INCH,
                 cfg.SKIRTING_COLOR,
             )
