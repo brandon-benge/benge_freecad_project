@@ -18,7 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from python_cad_tools.units import FOOT, INCH, to_mm
+from python_cad_tools.units import FOOT, to_mm
 
 
 def _element_by_id(manifest: dict, element_id: str) -> dict:
@@ -208,25 +208,39 @@ def test_grass_strip_between_deck_and_pool(copied_project: Path, design_manifest
     pool = _bounds(design_manifest, "complex.pool.pool_water_34x12_5ft_to8ft")
 
     # Grass sits between the lower deck stairs and the pool's near tile border.
-    # Use config-derived stair end: lower deck front + 55 inches.
-    stair_end_y = -to_mm(cfg.LOWER_DECK_DEPTH) - to_mm(55 * INCH)
+    # Stair end is at the upper deck front edge.
+    stair_end_y = -to_mm(cfg.UPPER_DECK_DEPTH)
     # Grass near edge (toward deck) is at the stair end.
     assert grass[4] == pytest.approx(stair_end_y)
     # Grass far edge (toward pool) is at the pool near tile border's near edge.
     pool_near_border_edge = pool[4] + to_mm(cfg.PATIO_BORDER)
     assert grass[1] == pytest.approx(pool_near_border_edge)
+    # Grass extends to x=0 (tree line) from the original x=4ft left tile border.
+    assert grass[0] == pytest.approx(0.0)
     # Grass is on the deck side of the pool (no overlap with pool footprint).
     assert grass[1] >= pool[4] - 1e-6
 
 
-# ── Fireplace width doubled to 4' ────────────────────────────────────────────
+def test_grass_south_of_pool_exists(design_manifest: dict) -> None:
+    ids = {e["id"] for e in design_manifest["elements"]}
+    assert "complex.site.pool_south_grass" in ids, "Missing PoolSouthGrass element"
 
 
-def test_fireplace_width_doubled(copied_project: Path, design_manifest: dict) -> None:
+def test_right_grass_extension_exists(design_manifest: dict) -> None:
+    ids = {e["id"] for e in design_manifest["elements"]}
+    assert "complex.site.right_grass_extension" in ids, "Missing RightGrassExtension element"
+
+
+# ── Fireplace 3' wide (x) × 8' deep (y) ─────────────────────────────────────
+
+
+def test_fireplace_dimensions(copied_project: Path, design_manifest: dict) -> None:
     cfg = _load_config(copied_project)
-    assert to_mm(cfg.FIREPLACE_WIDTH) == pytest.approx(to_mm(4 * FOOT))
+    assert to_mm(cfg.FIREPLACE_WIDTH) == pytest.approx(to_mm(3 * FOOT))
+    assert to_mm(cfg.FIREPLACE_DEPTH) == pytest.approx(to_mm(8 * FOOT))
     fireplace = _bounds(design_manifest, "complex.fireplace.fireplace_masonry_body")
-    assert (fireplace[3] - fireplace[0]) == pytest.approx(to_mm(4 * FOOT))
+    assert (fireplace[3] - fireplace[0]) == pytest.approx(to_mm(3 * FOOT))
+    assert (fireplace[4] - fireplace[1]) == pytest.approx(to_mm(8 * FOOT))
 
 
 # ── Hot tub deck (lower deck) is 17.5' across ───────────────────────────────

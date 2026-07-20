@@ -11,7 +11,7 @@ from build123d import Plane
 from python_cad_tools.context import BuildContext
 from python_cad_tools.elements import DesignElement, DesignModel, Dimensions, IfcMapping, MaterialSpec, Placement
 from python_cad_tools.geometry import box, cylinder_between, prism_between, sloped_pool
-from python_cad_tools.units import INCH, MM, Length, mm, to_mm
+from python_cad_tools.units import FOOT, INCH, MM, Length, mm, to_mm
 
 import config as cfg
 
@@ -19,6 +19,9 @@ ZERO = 0 * MM
 Color = tuple[float, float, float]
 Point3 = tuple[Length, Length, Length]
 Point2 = tuple[Length, Length]
+
+TREE_GREEN: Color = (0.0, 0.45, 0.15)
+TREE_BROWN: Color = (0.40, 0.25, 0.10)
 
 
 def _slug(value: str) -> str:
@@ -37,6 +40,7 @@ MATERIAL_REGISTRY: dict[tuple[str, Color], tuple[str, float]] = {
     ("roof", cfg.RAILING_COLOR): ("Roof Fascia Assembly", 500.0),
     ("roof", (0.18, 0.20, 0.22)): ("Roof Cover Assembly", 50.0),
     ("roof-framing", (0.92, 0.92, 0.90)): ("Dimensional Lumber", 500.0),
+    ("roof-framing", cfg.RAILING_COLOR): ("Roof Beam Assembly", 500.0),
     # Features
     ("feature", (0.55, 0.70, 0.82)): ("Glass Door Assembly", 2500.0),
     ("feature", (0.08, 0.10, 0.12)): ("Hot Tub Shell", 150.0),
@@ -47,6 +51,10 @@ MATERIAL_REGISTRY: dict[tuple[str, Color], tuple[str, float]] = {
     ("fireplace", (0.90, 0.28, 0.08)): ("Electric Fireplace Insert", 500.0),
     ("fireplace", (0.02, 0.02, 0.025)): ("Flat Screen TV", 300.0),
     ("fireplace", (0.03, 0.03, 0.03)): ("Fireplace Opening (Void)", 100.0),
+    ("fireplace", (0.10, 0.10, 0.10)): ("Metal Chimney Cap", 500.0),
+    ("fireplace", (0.02, 0.02, 0.02)): ("Chimney Flue Opening", 100.0),
+    # Skirting access panels
+    ("skirting", (0.30, 0.25, 0.20)): ("Access Panel (Wood)", 600.0),
     # House
     ("house", cfg.HOUSE_COLOR): ("Mixed Wall Assembly", 300.0),
     # Outdoor kitchen
@@ -64,11 +72,15 @@ MATERIAL_REGISTRY: dict[tuple[str, Color], tuple[str, float]] = {
     ("site", cfg.PAVER_COLOR): ("Concrete Pavers", 2400.0),
     ("site", cfg.TILE_COLOR): ("Pool Tile", 2300.0),
     ("site", cfg.GRASS_COLOR): ("Turf Grass", 50.0),
+    ("site", TREE_GREEN): ("Evergreen Tree", 500.0),
+    ("site", TREE_BROWN): ("Tree Trunk", 600.0),
     # Skirting
     ("skirting", cfg.SKIRTING_COLOR): ("Pressure-Treated Skirting", 500.0),
+    ("skirting", (0.95, 0.85, 0.10)): ("LED Strip Light", 100.0),
     # Stair
     ("stair", cfg.DECK_COLOR): ("Composite Tread", 700.0),
     ("stair", cfg.SKIRTING_COLOR): ("Framing Lumber", 500.0),
+    ("stair", (0.95, 0.85, 0.10)): ("LED Step Light", 100.0),
     # Structure
     ("structure", (0.15, 0.15, 0.15)): ("Concrete Slab", 2400.0),
 }
@@ -592,18 +604,29 @@ def build_model(context: BuildContext) -> DesignModel:
         cfg.SKIRTING_COLOR,
     )
 
+    # Fireplace body height matches roof at its front face (y=-DEPTH) so it
+    # touches the roof without extending through it.  The chimney extends above.
+    _roof_back_y = cfg.ROOF_OVERHANG
+    _roof_front_y = -cfg.UPPER_DECK_DEPTH - cfg.ROOF_OVERHANG
+    _roof_back_z = cfg.UPPER_DECK_ELEVATION + cfg.ROOF_HEIGHT_ABOVE_UPPER
+    _roof_front_z = _roof_back_z - cfg.ROOF_SLOPE_DROP
+    _fp_front_y = -cfg.FIREPLACE_DEPTH
+    _ratio = (_fp_front_y - _roof_back_y) / (_roof_front_y - _roof_back_y)
+    _fireplace_height_mm = to_mm(_roof_back_z) + _ratio * (to_mm(_roof_front_z) - to_mm(_roof_back_z))
+    fireplace_body_height = mm(_fireplace_height_mm)
     builder.add_box(
         "fireplace",
         "FireplaceMasonryBody",
         cfg.FIREPLACE_WIDTH,
         cfg.FIREPLACE_DEPTH,
-        cfg.FIREPLACE_HEIGHT,
+        fireplace_body_height,
         ZERO,
         -cfg.FIREPLACE_DEPTH,
         ZERO,
         cfg.BRICK_COLOR,
         drawing_label=True,
     )
+    # Opening on the right face (x=FIREPLACE_WIDTH), facing the deck
     fireplace_face_x = cfg.FIREPLACE_WIDTH
     fireplace_center_y = -cfg.FIREPLACE_DEPTH / 2
     builder.add_box(
@@ -621,10 +644,10 @@ def build_model(context: BuildContext) -> DesignModel:
         "fireplace",
         "ElectricFireplaceGlow",
         1.5 * INCH,
-        cfg.FIREPLACE_OPENING_WIDTH - 4 * INCH,
+        5 * FOOT,
         cfg.FIREPLACE_OPENING_HEIGHT - 6 * INCH,
         fireplace_face_x + INCH,
-        fireplace_center_y - (cfg.FIREPLACE_OPENING_WIDTH - 4 * INCH) / 2,
+        fireplace_center_y - (5 * FOOT) / 2,
         cfg.UPPER_DECK_ELEVATION + 15 * INCH,
         (0.90, 0.28, 0.08),
     )
@@ -639,13 +662,71 @@ def build_model(context: BuildContext) -> DesignModel:
         cfg.UPPER_DECK_ELEVATION + 56 * INCH,
         (0.02, 0.02, 0.025),
     )
+    # Fireplace mantel mounted on the right face above the opening
+    mantel_depth = 4 * INCH  # how far it protrudes from the face (+x)
+    mantel_height = 2 * INCH
+    mantel_width = cfg.FIREPLACE_OPENING_WIDTH + 2 * FOOT  # wider than opening
+    builder.add_box(
+        "fireplace",
+        "FireplaceMantel",
+        mantel_depth,  # x-dimension: protrudes from face
+        mantel_width,  # y-dimension: spans wider than opening
+        mantel_height,  # z-dimension: thickness
+        fireplace_face_x,  # x: starts at right face, extends outward
+        fireplace_center_y - mantel_width / 2,  # centered on fireplace
+        cfg.UPPER_DECK_ELEVATION + 12 * INCH + cfg.FIREPLACE_OPENING_HEIGHT + 2 * INCH,  # above opening
+        (0.15, 0.10, 0.05),
+    )
+    # Chimney at the back of fireplace, centered on x (near y=0, house side)
+    chimney_center_x = cfg.FIREPLACE_WIDTH / 2
+    chimney_x = chimney_center_x - cfg.CHIMNEY_WIDTH / 2
+    chimney_y = -cfg.CHIMNEY_DEPTH
+    chimney_bottom_z = fireplace_body_height
+    # Chimney top extends above the roof peak regardless of fireplace height
+    roof_peak_z = cfg.UPPER_DECK_ELEVATION + cfg.ROOF_HEIGHT_ABOVE_UPPER
+    chimney_top_z = roof_peak_z + cfg.CHIMNEY_HEIGHT_ABOVE_ROOF
+    builder.add_box(
+        "fireplace",
+        "FireplaceChimney",
+        cfg.CHIMNEY_WIDTH,
+        cfg.CHIMNEY_DEPTH,
+        chimney_top_z - chimney_bottom_z,
+        chimney_x,
+        chimney_y,
+        chimney_bottom_z,
+        cfg.BRICK_COLOR,
+    )
+    # Chimney cap
+    builder.add_box(
+        "fireplace",
+        "FireplaceChimneyCap",
+        cfg.CHIMNEY_WIDTH + 2 * cfg.CHIMNEY_CAP_OVERHANG,
+        cfg.CHIMNEY_DEPTH + 2 * cfg.CHIMNEY_CAP_OVERHANG,
+        2 * INCH,
+        chimney_x - cfg.CHIMNEY_CAP_OVERHANG,
+        chimney_y - cfg.CHIMNEY_CAP_OVERHANG,
+        chimney_top_z,
+        (0.10, 0.10, 0.10),
+    )
+    # Flue opening in chimney face
+    builder.add_box(
+        "fireplace",
+        "FireplaceFlueHole",
+        6 * INCH,
+        INCH,
+        6 * INCH,
+        chimney_center_x - 3 * INCH,
+        chimney_y - INCH,
+        chimney_bottom_z + 2 * FOOT,
+        (0.02, 0.02, 0.02),
+    )
     builder.add_box(
         "feature",
         "SlidingDoor",
         cfg.DOOR_WIDTH,
         3 * INCH,
         cfg.DOOR_HEIGHT,
-        3 * cfg.FOOT,
+        3 * cfg.FOOT + 6 * INCH,
         -1.5 * INCH,
         cfg.UPPER_DECK_ELEVATION,
         (0.55, 0.70, 0.82),
@@ -706,15 +787,17 @@ def build_model(context: BuildContext) -> DesignModel:
         INCH,
         (0.75, 0.75, 0.72),
     )
+    # Standalone grill placed to the right of the shortened kitchen counter
+    grill_x = kitchen_x + cfg.KITCHEN_LENGTH + 6 * INCH
     builder.add_box(
         "outdoor-kitchen",
         "OutdoorKitchenGrill",
         cfg.KITCHEN_GRILL_WIDTH,
         cfg.KITCHEN_DEPTH + 2 * INCH,
-        8 * INCH,
-        kitchen_x + cfg.KITCHEN_LENGTH - cfg.KITCHEN_GRILL_WIDTH - 12 * INCH,
+        36 * INCH,
+        grill_x,
         kitchen_y - INCH,
-        cfg.UPPER_DECK_ELEVATION + cfg.KITCHEN_COUNTER_HEIGHT,
+        cfg.UPPER_DECK_ELEVATION,
         (0.05, 0.05, 0.05),
     )
     for index, door_x in enumerate((kitchen_x + 12 * INCH, kitchen_x + 36 * INCH, kitchen_x + 60 * INCH), 1):
@@ -731,7 +814,7 @@ def build_model(context: BuildContext) -> DesignModel:
         )
 
     hot_tub_x = cfg.UPPER_DECK_WIDTH + cfg.LOWER_DECK_WIDTH - cfg.HOT_TUB_WIDTH - cfg.FOOT
-    hot_tub_y = -13 * cfg.FOOT
+    hot_tub_y = -(cfg.HOT_TUB_DEPTH + 1.5 * cfg.FOOT)
     builder.add_box(
         "feature",
         "HotTubPlaceholder",
@@ -770,6 +853,15 @@ def build_model(context: BuildContext) -> DesignModel:
             rail_thickness,
             cfg.RAILING_COLOR,
         )
+        # Midrail at half height
+        builder.add_cylinder(
+            "railing",
+            f"{name}Midrail",
+            (start[0], start[1], z + rail_height / 2),
+            (end[0], end[1], z + rail_height / 2),
+            rail_thickness / 2,
+            cfg.RAILING_COLOR,
+        )
 
     def rail_post(name: str, x: Length, y: Length, z: Length) -> None:
         builder.add_box(
@@ -791,7 +883,13 @@ def build_model(context: BuildContext) -> DesignModel:
         return dx, dy, run, -dy / run, dx / run
 
     def stair_run(
-        prefix: str, start: Point2, end: Point2, start_z: Length, end_z: Length, width: Length = cfg.STAIR_WIDTH
+        prefix: str,
+        start: Point2,
+        end: Point2,
+        start_z: Length,
+        end_z: Length,
+        width: Length = cfg.STAIR_WIDTH,
+        left_rail_x_shift: Length = ZERO,
     ) -> None:
         dx, dy, run, px, py = line_frame(start, end)
         steps = max(1, math.ceil(abs(to_mm(start_z - end_z)) / to_mm(cfg.MAX_RISER)))
@@ -805,11 +903,6 @@ def build_model(context: BuildContext) -> DesignModel:
             center_x = to_mm(start[0]) + dx * ratio
             center_y = to_mm(start[1]) + dy * ratio
             tread_z = to_mm(start_z) - rise * index
-            # Place the tread board so its top (walking surface) is at tread_z,
-            # matching the deck-board convention.  Previously the board bottom
-            # sat at tread_z, which left the riser (spanning tread_z upward)
-            # passing through the tread surface instead of lining up with the
-            # back of the step.
             builder.add_box(
                 "stair",
                 f"{prefix}Tread_{index:02d}",
@@ -822,11 +915,6 @@ def build_model(context: BuildContext) -> DesignModel:
                 cfg.DECK_COLOR,
             )
 
-            # Put the riser/backboard at the rear edge of the tread (toward
-            # the upper landing).  It was previously centered on the tread,
-            # which made it visibly pass through the walking surface.  With the
-            # tread top now at tread_z, the riser sits on top of the tread's
-            # back edge and rises to the landing/previous tread walking surface.
             riser_center_x = center_x - direction_x * riser_setback
             riser_center_y = center_y - direction_y * riser_setback
             builder.add_box(
@@ -846,7 +934,8 @@ def build_model(context: BuildContext) -> DesignModel:
         rail_offset = to_mm(width) / 2
         skirt_offset = rail_offset + to_mm(stair_skirt_width) / 2 + to_mm(stair_skirt_clearance)
         for side_name, side_sign in (("Left", -1), ("Right", 1)):
-            offset = side_sign * rail_offset
+            extra_shift = to_mm(left_rail_x_shift) if side_name == "Left" else 0.0
+            offset = side_sign * rail_offset + extra_shift
             start_x = mm(to_mm(start[0]) + px * offset)
             start_y = mm(to_mm(start[1]) + py * offset)
             end_x = mm(to_mm(end[0]) + px * offset)
@@ -867,10 +956,11 @@ def build_model(context: BuildContext) -> DesignModel:
                 rail_thickness / 2,
                 cfg.RAILING_COLOR,
             )
-            skirt_start_x = mm(to_mm(start[0]) + px * side_sign * skirt_offset)
-            skirt_start_y = mm(to_mm(start[1]) + py * side_sign * skirt_offset)
-            skirt_end_x = mm(to_mm(end[0]) + px * side_sign * skirt_offset)
-            skirt_end_y = mm(to_mm(end[1]) + py * side_sign * skirt_offset)
+            skirt_extra = to_mm(left_rail_x_shift) if side_name == "Left" else 0.0
+            skirt_start_x = mm(to_mm(start[0]) + px * (side_sign * skirt_offset + skirt_extra))
+            skirt_start_y = mm(to_mm(start[1]) + py * (side_sign * skirt_offset + skirt_extra))
+            skirt_end_x = mm(to_mm(end[0]) + px * (side_sign * skirt_offset + skirt_extra))
+            skirt_end_y = mm(to_mm(end[1]) + py * (side_sign * skirt_offset + skirt_extra))
             builder.add_prism(
                 "skirting",
                 f"{prefix}{side_name}StairSkirt",
@@ -930,9 +1020,127 @@ def build_model(context: BuildContext) -> DesignModel:
         ZERO,
         cfg.SKIRTING_COLOR,
     )
+    # Access panel on UpperDeckLeftSkirt — on the skirt face, 6ft wide
+    access_panel_color = (0.30, 0.25, 0.20)
+    builder.add_box(
+        "skirting",
+        "UpperDeckLeftSkirtAccessPanel",
+        INCH,
+        6 * FOOT,
+        2 * FOOT,
+        -skirt_thickness - INCH,
+        -14 * FOOT,  # spans y=-14ft to y=-8ft (within skirt y=-20ft..0)
+        ZERO + 6 * INCH,
+        access_panel_color,
+    )
+    # Access panel on LowerDeckRightSkirt — starts 6in from y=0, 6ft wide
+    # Box spans y=-6ft-6in to y=-6in (top edge 6in from house wall)
+    builder.add_box(
+        "skirting",
+        "LowerDeckRightSkirtAccessPanel",
+        INCH,
+        6 * FOOT,
+        2 * FOOT,
+        lower_x + cfg.LOWER_DECK_WIDTH + skirt_thickness,
+        -6 * FOOT - 6 * INCH,
+        ZERO + 6 * INCH,
+        access_panel_color,
+    )
+
+    # ── Lighting elements on all skirts and stairs ─────────────────────────
+    light_color = (0.95, 0.85, 0.10)  # warm yellow
+    light_width = 0.5 * INCH
+    light_height = 0.25 * INCH
+
+    def _add_skirt_light(name: str, x: Length, y: Length, run_length: Length, z: Length, *, axis: str) -> None:
+        builder.add_box(
+            "skirting",
+            f"{name}Light",
+            light_width if axis == "y" else run_length,
+            run_length if axis == "y" else light_width,
+            light_height,
+            x,
+            y,
+            z,
+            light_color,
+        )
+
+    # UpperDeckFrontSkirt light (along x)
+    _add_skirt_light(
+        "UpperDeckFrontSkirt",
+        ZERO,
+        -cfg.UPPER_DECK_DEPTH - skirt_thickness - light_width,
+        cfg.UPPER_DECK_WIDTH,
+        ZERO + 2 * INCH,
+        axis="x",
+    )
+    # UpperDeckLeftSkirt light (along y)
+    _add_skirt_light(
+        "UpperDeckLeftSkirt",
+        -skirt_thickness - light_width,
+        -cfg.UPPER_DECK_DEPTH,
+        cfg.UPPER_DECK_DEPTH,
+        ZERO + 2 * INCH,
+        axis="y",
+    )
+    # UpperDeckRightSkirt light (along y)
+    _add_skirt_light(
+        "UpperDeckRightSkirt",
+        cfg.UPPER_DECK_WIDTH + light_width,
+        -cfg.UPPER_DECK_DEPTH,
+        cfg.UPPER_DECK_DEPTH,
+        ZERO + 2 * INCH,
+        axis="y",
+    )
+    # LowerDeckRightSkirt light (along y)
+    _add_skirt_light(
+        "LowerDeckRightSkirt",
+        lower_x + cfg.LOWER_DECK_WIDTH + light_width,
+        -cfg.LOWER_DECK_DEPTH,
+        cfg.LOWER_DECK_DEPTH,
+        ZERO + 2 * INCH,
+        axis="y",
+    )
+    # UpperDeckExtensionRightSkirt light (along y)
+    _add_skirt_light(
+        "UpperDeckExtensionRightSkirt",
+        cfg.UPPER_DECK_WIDTH + cfg.STAIR_WIDTH + light_width,
+        -6 * cfg.FOOT,
+        6 * cfg.FOOT,
+        ZERO + 2 * INCH,
+        axis="y",
+    )
+
+    # Stair lighting — small light strips on stair tread risers
+    def _add_stair_lights(
+        prefix: str, start: Point2, end: Point2, start_z: Length, end_z: Length, width: Length = cfg.STAIR_WIDTH
+    ) -> None:
+        dx, dy, run, _px, _py = line_frame(start, end)
+        steps = max(1, math.ceil(abs(to_mm(start_z - end_z)) / to_mm(cfg.MAX_RISER)))
+        rise = to_mm(start_z - end_z) / steps
+        for index in range(1, steps + 1):
+            ratio = index / steps
+            center_x = to_mm(start[0]) + dx * ratio
+            center_y = to_mm(start[1]) + dy * ratio
+            tread_z = to_mm(start_z) - rise * index
+            # Light strip along the riser top edge
+            builder.add_box(
+                "stair",
+                f"{prefix}Light_{index:02d}",
+                width - 2 * INCH,
+                0.5 * INCH,
+                0.25 * INCH,
+                mm(center_x - to_mm(width) / 2 + to_mm(INCH)),
+                mm(center_y - to_mm(0.5 * INCH) / 2),
+                mm(tread_z + to_mm(INCH)),
+                light_color,
+            )
 
     upper_stair_start = (cfg.UPPER_DECK_WIDTH + cfg.STAIR_WIDTH / 2, -6 * cfg.FOOT)
     upper_stair_end = (upper_stair_start[0], -6 * cfg.FOOT - 44 * INCH)
+    _add_stair_lights(
+        "UpperStraight", upper_stair_start, upper_stair_end, cfg.UPPER_DECK_ELEVATION, cfg.LOWER_DECK_ELEVATION
+    )
     stair_run("UpperStraight", upper_stair_start, upper_stair_end, cfg.UPPER_DECK_ELEVATION, cfg.LOWER_DECK_ELEVATION)
     add_deck_boards(
         "UpperExtension",
@@ -981,20 +1189,33 @@ def build_model(context: BuildContext) -> DesignModel:
     # Post at the ExtRightRail / ExtBackRail junction corner
     rail_post("ExtRightPost", cfg.UPPER_DECK_WIDTH + cfg.STAIR_WIDTH, ZERO, cfg.UPPER_DECK_ELEVATION)
 
-    # Change 3: Lower deck stairs span full X-axis width of the lower deck
+    # Change 3: Lower deck stairs span full X-axis width of the lower deck.
+    # Left handrail/posts shifted to x=25ft to clear UpperDeckRightSkirt.
     lower_stair_width = cfg.LOWER_DECK_WIDTH
     lower_stair_start = (lower_x + lower_stair_width / 2, -cfg.LOWER_DECK_DEPTH)
-    lower_stair_end = (lower_stair_start[0], -cfg.LOWER_DECK_DEPTH - 55 * INCH)
-    stair_run("LowerFront", lower_stair_start, lower_stair_end, cfg.LOWER_DECK_ELEVATION, ZERO, lower_stair_width)
+    lower_stair_end = (lower_stair_start[0], -cfg.UPPER_DECK_DEPTH)
+    stair_run(
+        "LowerFront",
+        lower_stair_start,
+        lower_stair_end,
+        cfg.LOWER_DECK_ELEVATION,
+        ZERO,
+        lower_stair_width,
+        left_rail_x_shift=6 * INCH,
+    )
+    _add_stair_lights(
+        "LowerFront", lower_stair_start, lower_stair_end, cfg.LOWER_DECK_ELEVATION, ZERO, lower_stair_width
+    )
     # No LowerDeckFrontSkirt needed when stairs span the full deck width
 
-    pool_y = -(cfg.LOWER_DECK_DEPTH + 7 * cfg.FOOT + 6 * cfg.FOOT + 15 * cfg.FOOT)
+    stair_end_y = -cfg.UPPER_DECK_DEPTH
+    pool_y = stair_end_y - cfg.DECK_TO_POOL_CLEARANCE - cfg.POOL_WIDTH - cfg.PATIO_BORDER
     pool_length = cfg.POOL_LENGTH
     pool_width = cfg.POOL_WIDTH
-    # The pool and its right tile border extend to the right edge of the lower
-    # deck on the x axis.  The right tile border is the rightmost element, so
-    # its right edge aligns with the lower deck right edge; the pool sits just
-    # inside it.
+    # The pool sits 6ft from the x=0 axis (leaving room for trees along x=0)
+    # and extends to the right edge of the lower deck.  The right tile border
+    # is the outermost element on that side; the left tile border fills the
+    # gap between x=4ft and the pool left edge at x=6ft.
     lower_deck_right_x = cfg.UPPER_DECK_WIDTH + cfg.LOWER_DECK_WIDTH
     pool_right_x = lower_deck_right_x - cfg.PATIO_BORDER
     pool_x = pool_right_x - pool_length
@@ -1058,25 +1279,83 @@ def build_model(context: BuildContext) -> DesignModel:
     _tile_run("PoolTileBorderFar", pool_x, pool_y - tile_border, pool_length, axis="x")
 
     # Grass strip between the lower deck stairs and the pool's near tile
-    # border, spanning the pool surround x footprint.
-    lower_stair_end_y = -cfg.LOWER_DECK_DEPTH - 55 * INCH
-    grass_near_y = lower_stair_end_y
-    grass_far_y = pool_y + pool_width + tile_border
-    grass_x = pool_x - tile_border
-    grass_length = lower_deck_right_x - grass_x
-    grass_depth = grass_near_y - grass_far_y
-    if to_mm(grass_depth) > 0:
+    # border, spanning from tree line (x=0) to the pool surround right edge.
+    lower_stair_end_y = -cfg.UPPER_DECK_DEPTH
+    grass_strip_far_y = pool_y + pool_width + tile_border
+    grass_strip_near_y = lower_stair_end_y
+    grass_strip_x = ZERO
+    grass_strip_length = lower_deck_right_x - grass_strip_x
+    grass_strip_depth = grass_strip_near_y - grass_strip_far_y
+    if to_mm(grass_strip_depth) > 0:
         builder.add_box(
             "site",
             "PoolGrassStrip",
-            grass_length,
-            grass_depth,
+            grass_strip_length,
+            grass_strip_depth,
             cfg.GRASS_THICKNESS,
-            grass_x,
-            grass_far_y,
+            grass_strip_x,
+            grass_strip_far_y,
             -cfg.GRASS_THICKNESS,
             cfg.GRASS_COLOR,
             drawing_label=True,
+        )
+
+    # Grass south of the pool, from the end of the tree row (y=-60ft) up
+    # to the pool's far tile border edge.
+    tree_end_y = -(24 * FOOT + 9 * 4 * FOOT + 3 * FOOT)  # bottom of last tree foliage
+    pool_south_far_y = pool_y - tile_border
+    pool_south_depth = pool_south_far_y - tree_end_y
+    if to_mm(pool_south_depth) > 0:
+        builder.add_box(
+            "site",
+            "PoolSouthGrass",
+            lower_deck_right_x,
+            pool_south_depth,
+            cfg.GRASS_THICKNESS,
+            ZERO,
+            tree_end_y,
+            -cfg.GRASS_THICKNESS,
+            cfg.GRASS_COLOR,
+        )
+
+    # 8ft grass extension at the furthest X axis point of pool and deck,
+    # extending all the way to the 0' Y axis (house wall).
+    right_grass_x = lower_deck_right_x
+    right_grass_length = 8 * FOOT
+    right_grass_far_y = tree_end_y
+    right_grass_near_y = ZERO
+    right_grass_depth = right_grass_near_y - right_grass_far_y
+    if to_mm(right_grass_depth) > 0:
+        builder.add_box(
+            "site",
+            "RightGrassExtension",
+            right_grass_length,
+            right_grass_depth,
+            cfg.GRASS_THICKNESS,
+            right_grass_x,
+            right_grass_far_y,
+            -cfg.GRASS_THICKNESS,
+            cfg.GRASS_COLOR,
+        )
+
+    # Missing grass under the trees between PoolSouthGrass and PoolGrassStrip.
+    # The pool and its tile border occupy x=pool_x-tile_border..lower_deck_right_x
+    # in the y range from pool_y-tile_border to pool_y+pool_width+tile_border.
+    # The trees at x=0 need grass in that y gap.
+    pool_mid_far_y = pool_y - tile_border  # -42ft, top of PoolSouthGrass
+    pool_mid_near_y = pool_y + pool_width + tile_border  # -26ft, bottom of PoolGrassStrip
+    pool_mid_depth = pool_mid_near_y - pool_mid_far_y
+    if to_mm(pool_mid_depth) > 0:
+        builder.add_box(
+            "site",
+            "PoolMidGrass",
+            pool_x - tile_border,  # 0 to 4ft (left of the pool tile border)
+            pool_mid_depth,
+            cfg.GRASS_THICKNESS,
+            ZERO,
+            pool_mid_far_y,
+            -cfg.GRASS_THICKNESS,
+            cfg.GRASS_COLOR,
         )
 
     # Sloped pool with the deep end on the "reverse" side (left, near the
@@ -1109,6 +1388,42 @@ def build_model(context: BuildContext) -> DesignModel:
         },
     )
 
+    # Ten evergreen trees along x=0, every 4ft, starting at y=-24ft
+    _tree_trunk_height = 2 * FOOT
+    _tree_trunk_radius = 3 * INCH
+    for tree_index in range(10):
+        tree_y = -(24 * FOOT + tree_index * 4 * FOOT)
+        tree_z = ZERO
+        # Trunk
+        builder.add_cylinder(
+            "site",
+            f"Tree_{tree_index + 1:02d}Trunk",
+            (ZERO, tree_y, tree_z),
+            (ZERO, tree_y, tree_z + _tree_trunk_height),
+            _tree_trunk_radius,
+            TREE_BROWN,
+        )
+        # Foliage: three stacked tiered blocks forming an evergreen silhouette
+        _foliage_layers = [
+            (6.0 * FOOT, 6.0 * FOOT, 2.5 * FOOT, ZERO),
+            (4.0 * FOOT, 4.0 * FOOT, 2.5 * FOOT, 2.5 * FOOT),
+            (2.5 * FOOT, 2.5 * FOOT, 3.0 * FOOT, 5.0 * FOOT),
+        ]
+        for layer_idx, (width, depth, height, z_offset) in enumerate(_foliage_layers):
+            is_drawing_label = tree_index == 0 and layer_idx == 2  # label on top tier of first tree
+            builder.add_box(
+                "site",
+                f"Tree_{tree_index + 1:02d}Foliage_{layer_idx + 1}",
+                width,
+                depth,
+                height,
+                ZERO - width / 2,
+                tree_y - depth / 2,
+                tree_z + _tree_trunk_height + z_offset,
+                TREE_GREEN,
+                drawing_label=is_drawing_label,
+            )
+
     rail_segment(
         "UpperFrontRail",
         (ZERO, -cfg.UPPER_DECK_DEPTH),
@@ -1140,16 +1455,8 @@ def build_model(context: BuildContext) -> DesignModel:
     ]:
         rail_post(name, post_x, post_y, post_z)
 
-    # Horizontal cylindrical rail connecting LowerFrontLeftPost_Top (Z=1879.6) to UpperPost_R side
-    rail_z = cfg.LOWER_DECK_ELEVATION + rail_height  # 32*INCH + 42*INCH = 74*INCH = 1879.6mm
-    builder.add_cylinder(
-        "railing",
-        "LowerFrontLeftToUpperRRail",
-        (cfg.UPPER_DECK_WIDTH, -cfg.LOWER_DECK_DEPTH, rail_z),
-        (cfg.UPPER_DECK_WIDTH - post_thickness, -cfg.UPPER_DECK_DEPTH, rail_z),
-        rail_thickness,
-        cfg.RAILING_COLOR,
-    )
+    # LowerDeckFrontLeftCornerPost was removed — the lower stair run's left
+    # handrail/posts were shifted 6in left instead (see above).
 
     return DesignModel(
         id="file.template",

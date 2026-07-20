@@ -99,7 +99,7 @@ def test_hot_tub_and_fireplace(copied_project) -> None:
     assert to_mm(cfg.HOT_TUB_DEPTH) > 0
     assert to_mm(cfg.HOT_TUB_ABOVE_DECK) > 0
     assert to_mm(cfg.FIREPLACE_WIDTH) > 0
-    assert to_mm(cfg.FIREPLACE_DEPTH) > to_mm(cfg.FIREPLACE_WIDTH)
+    assert to_mm(cfg.FIREPLACE_DEPTH) > to_mm(cfg.FIREPLACE_WIDTH)  # deeper than wide
     assert to_mm(cfg.FIREPLACE_HEIGHT) > to_mm(cfg.UPPER_DECK_ELEVATION)
     assert to_mm(cfg.FIREPLACE_OPENING_WIDTH) > 0
     assert to_mm(cfg.FIREPLACE_OPENING_HEIGHT) > 0
