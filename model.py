@@ -7,6 +7,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from build123d import Plane
 from python_cad_tools.context import BuildContext
 from python_cad_tools.elements import DesignElement, DesignModel, Dimensions, IfcMapping, MaterialSpec, Placement
 from python_cad_tools.geometry import box, cylinder_between, prism_between, sloped_pool
@@ -62,6 +63,7 @@ MATERIAL_REGISTRY: dict[tuple[str, Color], tuple[str, float]] = {
     # Site
     ("site", cfg.PAVER_COLOR): ("Concrete Pavers", 2400.0),
     ("site", cfg.TILE_COLOR): ("Pool Tile", 2300.0),
+    ("site", cfg.GRASS_COLOR): ("Turf Grass", 50.0),
     # Skirting
     ("skirting", cfg.SKIRTING_COLOR): ("Pressure-Treated Skirting", 500.0),
     # Stair
@@ -987,78 +989,124 @@ def build_model(context: BuildContext) -> DesignModel:
     # No LowerDeckFrontSkirt needed when stairs span the full deck width
 
     pool_y = -(cfg.LOWER_DECK_DEPTH + 7 * cfg.FOOT + 6 * cfg.FOOT + 15 * cfg.FOOT)
-    pool_x = cfg.PATIO_BORDER
-    # 3' tile ground border around the pool.  Modeled as a four-piece ring so
-    # the tile layer sits around the pool footprint instead of a single slab
-    # that covers (overlaps) the pool.  The left/right strips span the full
-    # width including corners; the near/far strips fill the gap between them.
-    tile_border = cfg.PATIO_BORDER
-    tile_thickness = 4 * INCH
-    tile_z = -tile_thickness
     pool_length = cfg.POOL_LENGTH
     pool_width = cfg.POOL_WIDTH
-    builder.add_box(
-        "site",
-        "PoolTileBorderLeft",
-        tile_border,
-        pool_width + 2 * tile_border,
-        tile_thickness,
-        pool_x - tile_border,
-        pool_y - tile_border,
-        tile_z,
-        cfg.TILE_COLOR,
-    )
-    builder.add_box(
-        "site",
-        "PoolTileBorderRight",
-        tile_border,
-        pool_width + 2 * tile_border,
-        tile_thickness,
-        pool_x + pool_length,
-        pool_y - tile_border,
-        tile_z,
-        cfg.TILE_COLOR,
-    )
-    builder.add_box(
-        "site",
-        "PoolTileBorderNear",
-        pool_length,
-        tile_border,
-        tile_thickness,
-        pool_x,
-        pool_y + pool_width,
-        tile_z,
-        cfg.TILE_COLOR,
-        drawing_label=True,
-    )
-    builder.add_box(
-        "site",
-        "PoolTileBorderFar",
-        pool_length,
-        tile_border,
-        tile_thickness,
-        pool_x,
-        pool_y - tile_border,
-        tile_z,
-        cfg.TILE_COLOR,
-    )
+    # The pool and its right tile border extend to the right edge of the lower
+    # deck on the x axis.  The right tile border is the rightmost element, so
+    # its right edge aligns with the lower deck right edge; the pool sits just
+    # inside it.
+    lower_deck_right_x = cfg.UPPER_DECK_WIDTH + cfg.LOWER_DECK_WIDTH
+    pool_right_x = lower_deck_right_x - cfg.PATIO_BORDER
+    pool_x = pool_right_x - pool_length
+    # 2' tile ground border around the pool.  Modeled as a ring of individual
+    # 2' x 2' tile solids (not a single solid slab) so the pool surround reads
+    # as laid tile rather than a monolithic pour.  The left/right strips span
+    # the full width including corners; the near/far strips fill the gap
+    # between them so no tile overlaps the pool footprint or another tile.
+    tile_border = cfg.PATIO_BORDER
+    tile_size = cfg.POOL_TILE_SIZE
+    tile_thickness = 4 * INCH
+    tile_z = -tile_thickness
+
+    def _tile_run(name_prefix: str, x: Length, y: Length, run_length: Length, *, axis: str) -> None:
+        """Lay a single-row strip of 2' x 2' tiles along the given axis."""
+        step = tile_size
+        index = 1
+        if axis == "x":
+            pos = x
+            while pos < x + run_length - 1e-6 * MM:
+                length = min(tile_size, x + run_length - pos)
+                builder.add_box(
+                    "site",
+                    f"{name_prefix}_{index:02d}",
+                    length,
+                    tile_border,
+                    tile_thickness,
+                    pos,
+                    y,
+                    tile_z,
+                    cfg.TILE_COLOR,
+                )
+                pos = pos + step
+                index += 1
+        else:  # axis == "y"
+            pos = y
+            while pos < y + run_length - 1e-6 * MM:
+                length = min(tile_size, y + run_length - pos)
+                builder.add_box(
+                    "site",
+                    f"{name_prefix}_{index:02d}",
+                    tile_border,
+                    length,
+                    tile_thickness,
+                    x,
+                    pos,
+                    tile_z,
+                    cfg.TILE_COLOR,
+                )
+                pos = pos + step
+                index += 1
+
+    # Left/right strips include the corner tiles, so they span the full
+    # pool width plus a border on each side.
+    side_run = pool_width + 2 * tile_border
+    _tile_run("PoolTileBorderLeft", pool_x - tile_border, pool_y - tile_border, side_run, axis="y")
+    _tile_run("PoolTileBorderRight", pool_x + pool_length, pool_y - tile_border, side_run, axis="y")
+    # Near/far strips fill the gap between the left/right strips (pool length
+    # only, no corners) so tiles do not overlap.
+    _tile_run("PoolTileBorderNear", pool_x, pool_y + pool_width, pool_length, axis="x")
+    _tile_run("PoolTileBorderFar", pool_x, pool_y - tile_border, pool_length, axis="x")
+
+    # Grass strip between the lower deck stairs and the pool's near tile
+    # border, spanning the pool surround x footprint.
+    lower_stair_end_y = -cfg.LOWER_DECK_DEPTH - 55 * INCH
+    grass_near_y = lower_stair_end_y
+    grass_far_y = pool_y + pool_width + tile_border
+    grass_x = pool_x - tile_border
+    grass_length = lower_deck_right_x - grass_x
+    grass_depth = grass_near_y - grass_far_y
+    if to_mm(grass_depth) > 0:
+        builder.add_box(
+            "site",
+            "PoolGrassStrip",
+            grass_length,
+            grass_depth,
+            cfg.GRASS_THICKNESS,
+            grass_x,
+            grass_far_y,
+            -cfg.GRASS_THICKNESS,
+            cfg.GRASS_COLOR,
+            drawing_label=True,
+        )
+
+    # Sloped pool with the deep end on the "reverse" side (left, near the
+    # house).  sloped_pool always places the deep end at +x, so the geometry
+    # is mirrored about the pool's center x to put the deep end on the left.
     pool = sloped_pool(
-        cfg.POOL_LENGTH, cfg.POOL_WIDTH, cfg.POOL_SHALLOW_DEPTH, cfg.POOL_DEEP_DEPTH, origin=(pool_x, pool_y, ZERO)
+        pool_length, pool_width, cfg.POOL_SHALLOW_DEPTH, cfg.POOL_DEEP_DEPTH, origin=(pool_x, pool_y, ZERO)
     )
+    if cfg.POOL_DEEP_END_SIDE == "left":
+        center_x_mm = to_mm(pool_x) + to_mm(pool_length) / 2
+        pool = pool.mirror(Plane.YZ.offset(center_x_mm))
+    elif cfg.POOL_DEEP_END_SIDE != "right":
+        raise ValueError(f"Unsupported POOL_DEEP_END_SIDE: {cfg.POOL_DEEP_END_SIDE!r}; expected 'left' or 'right'")
     builder.add_shape(
         "pool",
         "PoolWater_34x12_5ftTo8ft",
         pool,
         cfg.WATER_COLOR,
         Dimensions(
-            to_mm(cfg.POOL_LENGTH),
-            to_mm(cfg.POOL_WIDTH),
+            to_mm(pool_length),
+            to_mm(pool_width),
             to_mm(cfg.POOL_DEEP_DEPTH),
             extras={"shallow_depth_mm": to_mm(cfg.POOL_SHALLOW_DEPTH)},
         ),
         placement=(pool_x, pool_y, ZERO),
         drawing_label=True,
-        properties={"quantity_provenance": "exact_sloped_geometry"},
+        properties={
+            "quantity_provenance": "exact_sloped_geometry",
+            "deep_end_side": cfg.POOL_DEEP_END_SIDE,
+        },
     )
 
     rail_segment(
