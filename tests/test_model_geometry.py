@@ -361,6 +361,35 @@ def test_one_tree_removed_for_clear_vehicle_gap_and_screen_reaches_shed(design_m
     assert last_tree[1] <= shed[4]
 
 
+def test_right_boundary_tree_line_has_exact_four_foot_pitch(copied_project: Path, design_manifest: dict) -> None:
+    cfg = _load_config(copied_project)
+    trunks = sorted(
+        (
+            element
+            for element in design_manifest["elements"]
+            if element["id"].startswith("complex.site.right_boundary_tree_") and element["id"].endswith("_trunk")
+        ),
+        key=lambda element: element["id"],
+    )
+
+    assert len(trunks) == 11
+    centers = [
+        (
+            (_bounds(design_manifest, element["id"])[0] + _bounds(design_manifest, element["id"])[3]) / 2,
+            (_bounds(design_manifest, element["id"])[1] + _bounds(design_manifest, element["id"])[4]) / 2,
+        )
+        for element in trunks
+    ]
+    assert all(center[0] == pytest.approx(to_mm(cfg.RIGHT_TREE_LINE_X)) for center in centers)
+    assert centers[0][1] == pytest.approx(to_mm(cfg.RIGHT_TREE_LINE_START_Y))
+    assert centers[-1][1] >= to_mm(cfg.RIGHT_TREE_LINE_END_Y)
+    assert centers[-1][1] == pytest.approx(-to_mm(40 * FOOT))
+    assert all(
+        centers[index][1] - centers[index + 1][1] == pytest.approx(to_mm(cfg.RIGHT_TREE_LINE_SPACING))
+        for index in range(len(centers) - 1)
+    )
+
+
 def test_black_fence_runs_right_side_of_shed_access_pavers(copied_project: Path, design_manifest: dict) -> None:
     cfg = _load_config(copied_project)
     fence = _bounds(design_manifest, "complex.site.shed_access_fence")

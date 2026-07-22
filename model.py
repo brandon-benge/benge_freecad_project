@@ -1737,6 +1737,63 @@ def build_model(context: BuildContext) -> DesignModel:
                 drawing_label=is_drawing_label,
             )
 
+    # Positive-X evergreen line from the y=0 axis toward y=-14yd.  Retain an
+    # exact 4ft pitch, stopping at the last center within the requested limit.
+    _right_tree_count = (
+        int(
+            math.floor(
+                to_mm(cfg.RIGHT_TREE_LINE_START_Y - cfg.RIGHT_TREE_LINE_END_Y) / to_mm(cfg.RIGHT_TREE_LINE_SPACING)
+            )
+        )
+        + 1
+    )
+    for tree_index in range(_right_tree_count):
+        tree_y = cfg.RIGHT_TREE_LINE_START_Y - tree_index * cfg.RIGHT_TREE_LINE_SPACING
+        tree_number = tree_index + 1
+        common_properties = {
+            "complex_type": "evergreen_tree",
+            "label": f"Right Yard Evergreen Tree {tree_number:02d}",
+            "landscape_role": "positive_x_yard_tree_line",
+            "layout_axis": "y",
+            "center_x_mm": to_mm(cfg.RIGHT_TREE_LINE_X),
+            "center_y_mm": to_mm(tree_y),
+            "spacing_mm": to_mm(cfg.RIGHT_TREE_LINE_SPACING),
+            "conceptual": True,
+        }
+        builder.add_cylinder(
+            "site",
+            f"RightBoundaryTree_{tree_number:02d}Trunk",
+            (cfg.RIGHT_TREE_LINE_X, tree_y, ZERO),
+            (cfg.RIGHT_TREE_LINE_X, tree_y, _tree_trunk_height),
+            _tree_trunk_radius,
+            TREE_BROWN,
+            properties={**common_properties, "assembly_role": "trunk"},
+        )
+        for layer_idx, (width, depth, height, z_offset) in enumerate(
+            [
+                (6.0 * FOOT, 6.0 * FOOT, 2.5 * FOOT, ZERO),
+                (4.0 * FOOT, 4.0 * FOOT, 2.5 * FOOT, 2.5 * FOOT),
+                (2.5 * FOOT, 2.5 * FOOT, 3.0 * FOOT, 5.0 * FOOT),
+            ]
+        ):
+            builder.add_box(
+                "site",
+                f"RightBoundaryTree_{tree_number:02d}Foliage_{layer_idx + 1}",
+                width,
+                depth,
+                height,
+                cfg.RIGHT_TREE_LINE_X - width / 2,
+                tree_y - depth / 2,
+                _tree_trunk_height + z_offset,
+                TREE_GREEN,
+                drawing_label=tree_number == 1 and layer_idx == 2,
+                properties={
+                    **common_properties,
+                    "assembly_role": "foliage",
+                    "foliage_tier": layer_idx + 1,
+                },
+            )
+
     rail_segment(
         "UpperFrontRail",
         (ZERO, -cfg.UPPER_DECK_DEPTH),

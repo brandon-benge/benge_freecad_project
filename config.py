@@ -70,6 +70,14 @@ SHED_SIDE_DOOR_HEIGHT = 6.5 * FOOT
 
 POOL_SOUTH_GRASS_MAX_X = 16.667 * 3 * FOOT
 
+# Evergreen tree line on the positive-X side of the yard.  Tree centers start
+# at y=0 and continue toward negative Y at an exact 4ft pitch; the final center
+# is the last pitch point that remains within the -14yd limit.
+RIGHT_TREE_LINE_X = 16.667 * 3 * FOOT
+RIGHT_TREE_LINE_START_Y = 0 * FOOT
+RIGHT_TREE_LINE_END_Y = -14 * 3 * FOOT
+RIGHT_TREE_LINE_SPACING = 4 * FOOT
+
 SHED_PAVER_MIN_X = -17.117 * FOOT
 SHED_PAVER_MAX_X = 0 * FOOT
 SHED_PAVER_START_Y = SHED_FRONT_Y

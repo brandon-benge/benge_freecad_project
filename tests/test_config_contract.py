@@ -104,6 +104,10 @@ def test_photo_matched_yard_parameters(copied_project) -> None:
     assert to_mm(cfg.SHED_FRONT_DOOR_WIDTH) < to_mm(cfg.SHED_WIDTH)
     assert to_mm(cfg.SHED_FRONT_DOOR_HEIGHT) < to_mm(cfg.SHED_WALL_HEIGHT)
     assert to_mm(cfg.POOL_SOUTH_GRASS_MAX_X) == pytest.approx(to_mm(16.667 * 3 * FOOT))
+    assert to_mm(cfg.RIGHT_TREE_LINE_X) == pytest.approx(to_mm(16.667 * 3 * FOOT))
+    assert to_mm(cfg.RIGHT_TREE_LINE_START_Y) == 0
+    assert to_mm(cfg.RIGHT_TREE_LINE_END_Y) == -to_mm(14 * 3 * FOOT)
+    assert to_mm(cfg.RIGHT_TREE_LINE_SPACING) == to_mm(4 * FOOT)
     assert to_mm(cfg.SHED_PAVER_MIN_X) == pytest.approx(-to_mm(17.117 * FOOT))
     assert to_mm(cfg.SHED_PAVER_MAX_X) == 0
     assert to_mm(cfg.SHED_PAVER_START_Y) == -to_mm(24 * 3 * FOOT)
