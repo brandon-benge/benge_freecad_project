@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from build123d import Plane, Polyline, extrude, make_face
+from build123d import Cone, Plane, Polyline, Sphere, extrude, make_face
 from python_cad_tools.context import BuildContext
 from python_cad_tools.elements import DesignElement, DesignModel, Dimensions, IfcMapping, MaterialSpec, Placement
 from python_cad_tools.geometry import box, cylinder_between, prism_between, sloped_pool
@@ -130,13 +130,15 @@ class ModelBuilder:
         physical: bool = True,
         parent_id: str | None = None,
         export_formats: set[str] | None = None,
+        stable_id: str | None = None,
+        ifc_mapping: IfcMapping | None = None,
     ) -> DesignElement:
-        stable_id = f"complex.{_slug(category)}.{_slug(name)}"
+        resolved_stable_id = stable_id or f"complex.{_slug(category)}.{_slug(name)}"
         values = dict(properties or {})
         if drawing_label:
             values["drawing_label"] = True
         element = DesignElement(
-            id=stable_id,
+            id=resolved_stable_id,
             name=name,
             category=category,
             geometry=shape,
@@ -145,7 +147,7 @@ class ModelBuilder:
             dimensions=dimensions,
             material=self.material(category, color),
             color_rgb=color,
-            ifc_mapping=IfcMapping("IfcBuildingElementProxy", "NOTDEFINED"),
+            ifc_mapping=ifc_mapping or IfcMapping("IfcBuildingElementProxy", "NOTDEFINED"),
             storey="Exterior Concept",
             tags={"file-template", _slug(category)},
             properties=values,
@@ -174,6 +176,8 @@ class ModelBuilder:
         physical: bool = True,
         parent_id: str | None = None,
         export_formats: set[str] | None = None,
+        stable_id: str | None = None,
+        ifc_mapping: IfcMapping | None = None,
     ) -> DesignElement:
         return self.add_shape(
             category,
@@ -187,6 +191,8 @@ class ModelBuilder:
             physical=physical,
             parent_id=parent_id,
             export_formats=export_formats,
+            stable_id=stable_id,
+            ifc_mapping=ifc_mapping,
         )
 
     def add_cylinder(
@@ -636,50 +642,38 @@ def build_model(context: BuildContext) -> DesignModel:
         cfg.RAILING_COLOR,
     )
     blade = cfg.FAN_DIAMETER / 2
-    builder.add_box(
-        "feature",
-        "CoveredDeckFanBlade_X_Pos",
-        blade,
-        cfg.FAN_BLADE_WIDTH,
-        INCH,
-        fan_x,
-        fan_y - cfg.FAN_BLADE_WIDTH / 2,
-        fan_z,
-        cfg.SKIRTING_COLOR,
-    )
-    builder.add_box(
-        "feature",
-        "CoveredDeckFanBlade_X_Neg",
-        blade,
-        cfg.FAN_BLADE_WIDTH,
-        INCH,
-        fan_x - blade,
-        fan_y - cfg.FAN_BLADE_WIDTH / 2,
-        fan_z,
-        cfg.SKIRTING_COLOR,
-    )
-    builder.add_box(
-        "feature",
-        "CoveredDeckFanBlade_Y_Pos",
-        cfg.FAN_BLADE_WIDTH,
-        blade,
-        INCH,
-        fan_x - cfg.FAN_BLADE_WIDTH / 2,
-        fan_y,
-        fan_z,
-        cfg.SKIRTING_COLOR,
-    )
-    builder.add_box(
-        "feature",
-        "CoveredDeckFanBlade_Y_Neg",
-        cfg.FAN_BLADE_WIDTH,
-        blade,
-        INCH,
-        fan_x - cfg.FAN_BLADE_WIDTH / 2,
-        fan_y - blade,
-        fan_z,
-        cfg.SKIRTING_COLOR,
-    )
+
+    def _fan_blade(name: str, direction_x: float, direction_y: float) -> None:
+        hub_radius = 7 * INCH
+        root_half_width = cfg.FAN_BLADE_WIDTH * 0.32
+        tip_half_width = cfg.FAN_BLADE_WIDTH / 2
+        px, py = -direction_y, direction_x
+        root_x = to_mm(fan_x) + direction_x * to_mm(hub_radius)
+        root_y = to_mm(fan_y) + direction_y * to_mm(hub_radius)
+        tip_x = to_mm(fan_x) + direction_x * to_mm(blade)
+        tip_y = to_mm(fan_y) + direction_y * to_mm(blade)
+        profile = Plane.XY * Polyline(
+            (root_x + px * to_mm(root_half_width), root_y + py * to_mm(root_half_width)),
+            (tip_x + px * to_mm(tip_half_width), tip_y + py * to_mm(tip_half_width)),
+            (tip_x - px * to_mm(tip_half_width), tip_y - py * to_mm(tip_half_width)),
+            (root_x - px * to_mm(root_half_width), root_y - py * to_mm(root_half_width)),
+            close=True,
+        )
+        shape = extrude(make_face(profile), amount=to_mm(INCH)).solid().translate((0.0, 0.0, to_mm(fan_z)))
+        builder.add_shape(
+            "feature",
+            name,
+            shape,
+            cfg.SKIRTING_COLOR,
+            Dimensions(to_mm(blade), to_mm(cfg.FAN_BLADE_WIDTH), to_mm(INCH)),
+            placement=(fan_x, fan_y, fan_z),
+            properties={"complex_type": "tapered_ceiling_fan_blade", "assembly_role": "fan_blade"},
+        )
+
+    _fan_blade("CoveredDeckFanBlade_X_Pos", 1.0, 0.0)
+    _fan_blade("CoveredDeckFanBlade_X_Neg", -1.0, 0.0)
+    _fan_blade("CoveredDeckFanBlade_Y_Pos", 0.0, 1.0)
+    _fan_blade("CoveredDeckFanBlade_Y_Neg", 0.0, -1.0)
 
     # Fireplace body height matches roof at its front face (y=-DEPTH) so it
     # touches the roof without extending through it.  The chimney extends above.
@@ -691,31 +685,53 @@ def build_model(context: BuildContext) -> DesignModel:
     _ratio = (_fp_front_y - _roof_back_y) / (_roof_front_y - _roof_back_y)
     _fireplace_height_mm = to_mm(_roof_back_z) + _ratio * (to_mm(_roof_front_z) - to_mm(_roof_back_z))
     fireplace_body_height = mm(_fireplace_height_mm)
-    builder.add_box(
-        "fireplace",
-        "FireplaceMasonryBody",
+    # Opening on the right face (x=FIREPLACE_WIDTH), facing the deck. Cut it
+    # into the masonry rather than representing it as a dark surface patch.
+    fireplace_face_x = cfg.FIREPLACE_WIDTH
+    fireplace_center_y = -cfg.FIREPLACE_DEPTH / 2
+    firebox_y = fireplace_center_y - cfg.FIREPLACE_OPENING_WIDTH / 2
+    firebox_z = cfg.UPPER_DECK_ELEVATION + 12 * INCH
+    fireplace_body = box(
         cfg.FIREPLACE_WIDTH,
         cfg.FIREPLACE_DEPTH,
         fireplace_body_height,
-        ZERO,
-        -cfg.FIREPLACE_DEPTH,
-        ZERO,
-        cfg.BRICK_COLOR,
-        drawing_label=True,
+        origin=(ZERO, -cfg.FIREPLACE_DEPTH, ZERO),
     )
-    # Opening on the right face (x=FIREPLACE_WIDTH), facing the deck
-    fireplace_face_x = cfg.FIREPLACE_WIDTH
-    fireplace_center_y = -cfg.FIREPLACE_DEPTH / 2
+    firebox_void = box(
+        14 * INCH,
+        cfg.FIREPLACE_OPENING_WIDTH,
+        cfg.FIREPLACE_OPENING_HEIGHT,
+        origin=(cfg.FIREPLACE_WIDTH - 14 * INCH, firebox_y, firebox_z),
+    )
+    builder.add_shape(
+        "fireplace",
+        "FireplaceMasonryBody",
+        fireplace_body.cut(firebox_void),
+        cfg.BRICK_COLOR,
+        Dimensions(to_mm(cfg.FIREPLACE_WIDTH), to_mm(cfg.FIREPLACE_DEPTH), to_mm(fireplace_body_height)),
+        drawing_label=True,
+        properties={
+            "complex_type": "masonry_fireplace_with_firebox",
+            "assembly_role": "fireplace_enclosure",
+            "opening_for": "complex.fireplace.fireplace_opening",
+            "wall_opening": True,
+        },
+    )
     builder.add_box(
         "fireplace",
         "FireplaceOpening",
-        INCH,
+        12 * INCH,
         cfg.FIREPLACE_OPENING_WIDTH,
         cfg.FIREPLACE_OPENING_HEIGHT,
-        fireplace_face_x,
-        fireplace_center_y - cfg.FIREPLACE_OPENING_WIDTH / 2,
-        cfg.UPPER_DECK_ELEVATION + 12 * INCH,
+        fireplace_face_x - 12 * INCH,
+        firebox_y,
+        firebox_z,
         (0.03, 0.03, 0.03),
+        properties={
+            "complex_type": "electric_firebox",
+            "assembly_role": "recessed_insert_cavity",
+            "opening_in": "complex.fireplace.fireplace_masonry_body",
+        },
     )
     builder.add_box(
         "fireplace",
@@ -797,18 +813,84 @@ def build_model(context: BuildContext) -> DesignModel:
         chimney_bottom_z + 2 * FOOT,
         (0.02, 0.02, 0.02),
     )
+    door_frame = 2 * INCH
     builder.add_box(
         "feature",
         "SlidingDoor",
-        cfg.DOOR_WIDTH,
-        3 * INCH,
-        cfg.DOOR_HEIGHT,
-        sliding_door_x,
+        cfg.DOOR_WIDTH - 2 * door_frame,
+        1 * INCH,
+        cfg.DOOR_HEIGHT - 2 * door_frame,
+        sliding_door_x + door_frame,
         sliding_door_y,
-        cfg.UPPER_DECK_ELEVATION,
+        cfg.UPPER_DECK_ELEVATION + door_frame,
         (0.55, 0.70, 0.82),
         drawing_label=True,
+        properties={
+            "complex_type": "sliding_glass_door",
+            "assembly_role": "glazing",
+            "panel_count": 2,
+        },
     )
+    for frame_name, length, depth, height, x, y, z in (
+        (
+            "SlidingDoorFrameLeft",
+            door_frame,
+            3 * INCH,
+            cfg.DOOR_HEIGHT,
+            sliding_door_x,
+            sliding_door_y,
+            cfg.UPPER_DECK_ELEVATION,
+        ),
+        (
+            "SlidingDoorFrameRight",
+            door_frame,
+            3 * INCH,
+            cfg.DOOR_HEIGHT,
+            sliding_door_x + cfg.DOOR_WIDTH - door_frame,
+            sliding_door_y,
+            cfg.UPPER_DECK_ELEVATION,
+        ),
+        (
+            "SlidingDoorFrameHead",
+            cfg.DOOR_WIDTH,
+            3 * INCH,
+            door_frame,
+            sliding_door_x,
+            sliding_door_y,
+            cfg.UPPER_DECK_ELEVATION + cfg.DOOR_HEIGHT - door_frame,
+        ),
+        (
+            "SlidingDoorFrameSill",
+            cfg.DOOR_WIDTH,
+            3 * INCH,
+            door_frame,
+            sliding_door_x,
+            sliding_door_y,
+            cfg.UPPER_DECK_ELEVATION,
+        ),
+        (
+            "SlidingDoorMeetingRail",
+            door_frame,
+            3 * INCH,
+            cfg.DOOR_HEIGHT - 2 * door_frame,
+            sliding_door_x + cfg.DOOR_WIDTH / 2 - door_frame / 2,
+            sliding_door_y,
+            cfg.UPPER_DECK_ELEVATION + door_frame,
+        ),
+    ):
+        builder.add_box(
+            "feature",
+            frame_name,
+            length,
+            depth,
+            height,
+            x,
+            y,
+            z,
+            cfg.RAILING_COLOR,
+            parent_id="complex.feature.sliding_door",
+            properties={"complex_type": "door_frame_member", "assembly_role": "sliding_door_frame"},
+        )
 
     kitchen_x = 10.5 * cfg.FOOT
     kitchen_y = -2.5 * cfg.FOOT
@@ -824,29 +906,58 @@ def build_model(context: BuildContext) -> DesignModel:
         (0.12, 0.12, 0.12),
         drawing_label=True,
     )
-    builder.add_box(
-        "outdoor-kitchen",
-        "OutdoorKitchenCountertop",
+    sink_x = kitchen_x + 18 * INCH
+    sink_y = kitchen_y + (cfg.KITCHEN_DEPTH - cfg.KITCHEN_SINK_DEPTH) / 2
+    counter_z = cfg.UPPER_DECK_ELEVATION + cfg.KITCHEN_COUNTER_HEIGHT - cfg.KITCHEN_COUNTER_THICKNESS
+    countertop = box(
         cfg.KITCHEN_LENGTH + 4 * INCH,
         cfg.KITCHEN_DEPTH + 4 * INCH,
         cfg.KITCHEN_COUNTER_THICKNESS,
-        kitchen_x - 2 * INCH,
-        kitchen_y - 2 * INCH,
-        cfg.UPPER_DECK_ELEVATION + cfg.KITCHEN_COUNTER_HEIGHT - cfg.KITCHEN_COUNTER_THICKNESS,
-        (0.45, 0.45, 0.42),
+        origin=(kitchen_x - 2 * INCH, kitchen_y - 2 * INCH, counter_z),
     )
-    sink_x = kitchen_x + 18 * INCH
-    sink_y = kitchen_y + (cfg.KITCHEN_DEPTH - cfg.KITCHEN_SINK_DEPTH) / 2
-    builder.add_box(
+    sink_cutout = box(
+        cfg.KITCHEN_SINK_WIDTH,
+        cfg.KITCHEN_SINK_DEPTH,
+        cfg.KITCHEN_COUNTER_THICKNESS,
+        origin=(sink_x, sink_y, counter_z),
+    )
+    builder.add_shape(
         "outdoor-kitchen",
-        "OutdoorKitchenSinkBasin",
+        "OutdoorKitchenCountertop",
+        countertop.cut(sink_cutout),
+        (0.45, 0.45, 0.42),
+        Dimensions(
+            to_mm(cfg.KITCHEN_LENGTH + 4 * INCH),
+            to_mm(cfg.KITCHEN_DEPTH + 4 * INCH),
+            to_mm(cfg.KITCHEN_COUNTER_THICKNESS),
+        ),
+        placement=(kitchen_x - 2 * INCH, kitchen_y - 2 * INCH, counter_z),
+        properties={
+            "complex_type": "countertop_with_sink_cutout",
+            "assembly_role": "work_surface",
+            "opening_for": "complex.outdoor_kitchen.outdoor_kitchen_sink_basin",
+        },
+    )
+    sink_outer = box(
         cfg.KITCHEN_SINK_WIDTH,
         cfg.KITCHEN_SINK_DEPTH,
         5 * INCH,
-        sink_x,
-        sink_y,
-        cfg.UPPER_DECK_ELEVATION + cfg.KITCHEN_COUNTER_HEIGHT - 5 * INCH,
+        origin=(sink_x, sink_y, cfg.UPPER_DECK_ELEVATION + cfg.KITCHEN_COUNTER_HEIGHT - 5 * INCH),
+    )
+    sink_inner = box(
+        cfg.KITCHEN_SINK_WIDTH - 2 * INCH,
+        cfg.KITCHEN_SINK_DEPTH - 2 * INCH,
+        4.5 * INCH,
+        origin=(sink_x + INCH, sink_y + INCH, cfg.UPPER_DECK_ELEVATION + cfg.KITCHEN_COUNTER_HEIGHT - 4.5 * INCH),
+    )
+    builder.add_shape(
+        "outdoor-kitchen",
+        "OutdoorKitchenSinkBasin",
+        sink_outer.cut(sink_inner),
         (0.12, 0.15, 0.16),
+        Dimensions(to_mm(cfg.KITCHEN_SINK_WIDTH), to_mm(cfg.KITCHEN_SINK_DEPTH), to_mm(5 * INCH)),
+        placement=(sink_x, sink_y, cfg.UPPER_DECK_ELEVATION + cfg.KITCHEN_COUNTER_HEIGHT - 5 * INCH),
+        properties={"complex_type": "open_sink_basin", "assembly_role": "sink"},
     )
     builder.add_cylinder(
         "outdoor-kitchen",
@@ -863,6 +974,24 @@ def build_model(context: BuildContext) -> DesignModel:
         ),
         INCH,
         (0.75, 0.75, 0.72),
+    )
+    builder.add_cylinder(
+        "outdoor-kitchen",
+        "OutdoorKitchenFaucetSpout",
+        (
+            sink_x + cfg.KITCHEN_SINK_WIDTH / 2,
+            sink_y + cfg.KITCHEN_SINK_DEPTH,
+            cfg.UPPER_DECK_ELEVATION + cfg.KITCHEN_COUNTER_HEIGHT + 10 * INCH,
+        ),
+        (
+            sink_x + cfg.KITCHEN_SINK_WIDTH / 2,
+            sink_y + cfg.KITCHEN_SINK_DEPTH - 7 * INCH,
+            cfg.UPPER_DECK_ELEVATION + cfg.KITCHEN_COUNTER_HEIGHT + 10 * INCH,
+        ),
+        0.75 * INCH,
+        (0.75, 0.75, 0.72),
+        parent_id="complex.outdoor_kitchen.outdoor_kitchen_faucet",
+        properties={"complex_type": "faucet_spout", "assembly_role": "water_outlet"},
     )
     # Standalone grill placed to the right of the shortened kitchen counter
     grill_x = kitchen_x + cfg.KITCHEN_LENGTH + 6 * INCH
@@ -890,18 +1019,67 @@ def build_model(context: BuildContext) -> DesignModel:
             (0.22, 0.22, 0.22),
         )
 
-    builder.add_box(
-        "feature",
-        "HotTubPlaceholder",
+    hot_tub_z = cfg.LOWER_DECK_ELEVATION - (cfg.HOT_TUB_TOTAL_HEIGHT - cfg.HOT_TUB_ABOVE_DECK)
+    hot_tub_outer = box(
         cfg.HOT_TUB_WIDTH,
         cfg.HOT_TUB_DEPTH,
-        cfg.HOT_TUB_ABOVE_DECK,
-        hot_tub_x,
-        hot_tub_y,
-        cfg.LOWER_DECK_ELEVATION,
-        (0.08, 0.10, 0.12),
-        drawing_label=True,
+        cfg.HOT_TUB_TOTAL_HEIGHT,
+        origin=(hot_tub_x, hot_tub_y, hot_tub_z),
     )
+    hot_tub_basin = box(
+        cfg.HOT_TUB_WIDTH - 2 * cfg.HOT_TUB_RIM_WIDTH,
+        cfg.HOT_TUB_DEPTH - 2 * cfg.HOT_TUB_RIM_WIDTH,
+        cfg.HOT_TUB_TOTAL_HEIGHT - cfg.HOT_TUB_SHELL_THICKNESS,
+        origin=(
+            hot_tub_x + cfg.HOT_TUB_RIM_WIDTH,
+            hot_tub_y + cfg.HOT_TUB_RIM_WIDTH,
+            hot_tub_z + cfg.HOT_TUB_SHELL_THICKNESS,
+        ),
+    )
+    builder.add_shape(
+        "feature",
+        "HotTubSpaShell",
+        hot_tub_outer.cut(hot_tub_basin),
+        (0.08, 0.10, 0.12),
+        Dimensions(to_mm(cfg.HOT_TUB_WIDTH), to_mm(cfg.HOT_TUB_DEPTH), to_mm(cfg.HOT_TUB_TOTAL_HEIGHT)),
+        placement=(hot_tub_x, hot_tub_y, hot_tub_z),
+        drawing_label=True,
+        stable_id="complex.feature.hot_tub_placeholder",
+        properties={
+            "label": "Lower Deck Hot Tub Spa",
+            "complex_type": "recessed_hot_tub_spa",
+            "assembly_role": "spa_shell",
+            "replaces_placeholder": True,
+            "service_access_side": "south",
+        },
+    )
+    builder.add_box(
+        "pool",
+        "HotTubWater",
+        cfg.HOT_TUB_WIDTH - 2 * cfg.HOT_TUB_RIM_WIDTH,
+        cfg.HOT_TUB_DEPTH - 2 * cfg.HOT_TUB_RIM_WIDTH,
+        1 * INCH,
+        hot_tub_x + cfg.HOT_TUB_RIM_WIDTH,
+        hot_tub_y + cfg.HOT_TUB_RIM_WIDTH,
+        hot_tub_z + cfg.HOT_TUB_TOTAL_HEIGHT - cfg.HOT_TUB_WATER_OFFSET,
+        cfg.WATER_COLOR,
+        parent_id="complex.feature.hot_tub_placeholder",
+        properties={"complex_type": "spa_water_surface", "assembly_role": "water"},
+    )
+    for step_index in range(2):
+        builder.add_box(
+            "feature",
+            f"HotTubAccessStep_{step_index + 1}",
+            cfg.HOT_TUB_STEP_WIDTH,
+            cfg.HOT_TUB_STEP_DEPTH,
+            cfg.HOT_TUB_STEP_HEIGHT * (step_index + 1),
+            hot_tub_x + (cfg.HOT_TUB_WIDTH - cfg.HOT_TUB_STEP_WIDTH) / 2,
+            hot_tub_y - cfg.HOT_TUB_STEP_DEPTH * (2 - step_index),
+            cfg.LOWER_DECK_ELEVATION,
+            cfg.SKIRTING_COLOR,
+            parent_id="complex.feature.hot_tub_placeholder",
+            properties={"complex_type": "spa_access_step", "assembly_role": "access_step"},
+        )
     builder.add_box(
         "structure",
         "HotTubPlatform",
@@ -914,9 +1092,9 @@ def build_model(context: BuildContext) -> DesignModel:
         (0.15, 0.15, 0.15),
     )
 
-    rail_height = 42 * INCH
-    rail_thickness = 2 * INCH
-    post_thickness = 4 * INCH
+    rail_height = cfg.RAILING_HEIGHT
+    rail_thickness = cfg.RAILING_RAIL_SIZE
+    post_thickness = cfg.RAILING_POST_SIZE
 
     def rail_segment(name: str, start: Point2, end: Point2, z: Length) -> None:
         builder.add_prism(
@@ -937,6 +1115,28 @@ def build_model(context: BuildContext) -> DesignModel:
             rail_thickness / 2,
             cfg.RAILING_COLOR,
         )
+        dx = to_mm(end[0] - start[0])
+        dy = to_mm(end[1] - start[1])
+        run = math.hypot(dx, dy)
+        baluster_count = max(1, math.ceil(run / to_mm(cfg.RAILING_BALUSTER_MAX_SPACING)) - 1)
+        for index in range(1, baluster_count + 1):
+            ratio = index / (baluster_count + 1)
+            baluster_x = mm(to_mm(start[0]) + dx * ratio)
+            baluster_y = mm(to_mm(start[1]) + dy * ratio)
+            builder.add_cylinder(
+                "railing",
+                f"{name}Baluster_{index:03d}",
+                (baluster_x, baluster_y, z + rail_thickness),
+                (baluster_x, baluster_y, z + rail_height - rail_thickness),
+                cfg.RAILING_BALUSTER_SIZE / 2,
+                cfg.RAILING_COLOR,
+                parent_id=f"complex.railing.{_slug(name)}",
+                properties={
+                    "complex_type": "railing_baluster",
+                    "assembly_role": "guard_infill",
+                    "maximum_spacing_mm": to_mm(cfg.RAILING_BALUSTER_MAX_SPACING),
+                },
+            )
 
     def rail_post(name: str, x: Length, y: Length, z: Length) -> None:
         builder.add_box(
@@ -1688,6 +1888,78 @@ def build_model(context: BuildContext) -> DesignModel:
         pool = pool.mirror(Plane.YZ.offset(center_x_mm))
     elif cfg.POOL_DEEP_END_SIDE != "right":
         raise ValueError(f"Unsupported POOL_DEEP_END_SIDE: {cfg.POOL_DEEP_END_SIDE!r}; expected 'left' or 'right'")
+    pool_shell = sloped_pool(
+        pool_length + 2 * cfg.POOL_SHELL_THICKNESS,
+        pool_width + 2 * cfg.POOL_SHELL_THICKNESS,
+        cfg.POOL_SHALLOW_DEPTH + cfg.POOL_SHELL_THICKNESS,
+        cfg.POOL_DEEP_DEPTH + cfg.POOL_SHELL_THICKNESS,
+        origin=(pool_x - cfg.POOL_SHELL_THICKNESS, pool_y - cfg.POOL_SHELL_THICKNESS, ZERO),
+    )
+    if cfg.POOL_DEEP_END_SIDE == "left":
+        pool_shell = pool_shell.mirror(Plane.YZ.offset(center_x_mm))
+    builder.add_shape(
+        "pool",
+        "MainPoolShell",
+        pool_shell.cut(pool),
+        cfg.TILE_COLOR,
+        Dimensions(
+            to_mm(pool_length + 2 * cfg.POOL_SHELL_THICKNESS),
+            to_mm(pool_width + 2 * cfg.POOL_SHELL_THICKNESS),
+            to_mm(cfg.POOL_DEEP_DEPTH + cfg.POOL_SHELL_THICKNESS),
+        ),
+        placement=(pool_x - cfg.POOL_SHELL_THICKNESS, pool_y - cfg.POOL_SHELL_THICKNESS, ZERO),
+        properties={
+            "label": "Main Pool Structural Shell",
+            "complex_type": "sloped_pool_shell",
+            "assembly_role": "watertight_pool_enclosure",
+            "contains": "complex.pool.main_pool_water_sloped5ft_to8ft",
+            "shell_thickness_mm": to_mm(cfg.POOL_SHELL_THICKNESS),
+        },
+    )
+    coping_outer = box(
+        pool_length + 2 * cfg.POOL_COPING_WIDTH,
+        pool_width + 2 * cfg.POOL_COPING_WIDTH,
+        cfg.POOL_COPING_THICKNESS,
+        origin=(pool_x - cfg.POOL_COPING_WIDTH, pool_y - cfg.POOL_COPING_WIDTH, ZERO),
+    )
+    coping_opening = box(
+        pool_length,
+        pool_width,
+        cfg.POOL_COPING_THICKNESS,
+        origin=(pool_x, pool_y, ZERO),
+    )
+    builder.add_shape(
+        "site",
+        "MainPoolCoping",
+        coping_outer.cut(coping_opening),
+        cfg.TILE_COLOR,
+        Dimensions(
+            to_mm(pool_length + 2 * cfg.POOL_COPING_WIDTH),
+            to_mm(pool_width + 2 * cfg.POOL_COPING_WIDTH),
+            to_mm(cfg.POOL_COPING_THICKNESS),
+        ),
+        placement=(pool_x - cfg.POOL_COPING_WIDTH, pool_y - cfg.POOL_COPING_WIDTH, ZERO),
+        properties={
+            "complex_type": "pool_coping_ring",
+            "assembly_role": "pool_edge_finish",
+            "surrounds": "complex.pool.main_pool_water_sloped5ft_to8ft",
+        },
+    )
+    shallow_x = pool_x + pool_length - cfg.POOL_STEP_TREAD
+    for step_index in range(3):
+        builder.add_box(
+            "pool",
+            f"MainPoolEntryStep_{step_index + 1}",
+            cfg.POOL_STEP_TREAD * (step_index + 1),
+            cfg.POOL_STEP_WIDTH,
+            cfg.POOL_STEP_RISE,
+            shallow_x - cfg.POOL_STEP_TREAD * step_index,
+            pool_y + (pool_width - cfg.POOL_STEP_WIDTH) / 2,
+            -cfg.POOL_SHALLOW_DEPTH + cfg.POOL_STEP_RISE * step_index,
+            cfg.TILE_COLOR,
+            parent_id="complex.pool.main_pool_shell",
+            properties={"complex_type": "pool_entry_step", "assembly_role": "entry_step"},
+        )
     builder.add_shape(
         "pool",
         "MainPoolWater_Sloped5ftTo8ft",
@@ -1868,12 +2140,34 @@ def build_model(context: BuildContext) -> DesignModel:
             "surface": "landscape_rock",
         },
     )
+    # Deterministic accent stones break up the otherwise planar rock-bed
+    # surface without introducing external mesh assets.
+    for rock_index in range(12):
+        rock_radius = (2.5 + (rock_index % 4) * 0.45) * INCH
+        rock_x = rock_bed_x + rock_bed_width * ((rock_index % 3) + 1) / 4
+        rock_y = shed_y + cfg.SHED_DEPTH * ((rock_index // 3) + 1) / 5
+        rock_shape = (
+            Sphere(to_mm(rock_radius)).solid().translate((to_mm(rock_x), to_mm(rock_y), -to_mm(rock_radius) * 0.25))
+        )
+        builder.add_shape(
+            "site",
+            f"ShedRockAccent_{rock_index + 1:02d}",
+            rock_shape,
+            cfg.ROCK_COLOR,
+            Dimensions(to_mm(2 * rock_radius), to_mm(2 * rock_radius), to_mm(2 * rock_radius)),
+            placement=(rock_x - rock_radius, rock_y - rock_radius, -rock_radius),
+            parent_id="complex.site.shed_grass_rock_bed",
+            properties={
+                "complex_type": "landscape_accent_stone",
+                "assembly_role": "rock_bed_surface_detail",
+            },
+        )
 
     # Evergreen screen along x=0. Tree_06 is intentionally removed to form the
     # 10ft vehicle opening beside the pool; the two bordering trees are clipped
     # in depth at the opening, and Tree_11 extends the screen to the shed.
-    _tree_trunk_height = 2 * FOOT
-    _tree_trunk_radius = 3 * INCH
+    _tree_trunk_height = cfg.TREE_TRUNK_HEIGHT
+    _tree_trunk_radius = cfg.TREE_TRUNK_RADIUS
     _tree_layout = (
         (1, -24 * FOOT, 6 * FOOT),
         (2, -28 * FOOT, 6 * FOOT),
@@ -1898,26 +2192,35 @@ def build_model(context: BuildContext) -> DesignModel:
             _tree_trunk_radius,
             TREE_BROWN,
         )
-        # Foliage: three stacked tiered blocks forming an evergreen silhouette
+        # Foliage: overlapping tapered cones create a natural evergreen crown
+        # while remaining deterministic and lightweight enough for all exports.
         depth_scale = lower_foliage_depth / (6 * FOOT)
+        height_variation = 1.0 + ((tree_number * 17) % 5 - 2) * 0.025
         _foliage_layers = [
-            (6.0 * FOOT, lower_foliage_depth, 2.5 * FOOT, ZERO),
-            (4.0 * FOOT, 4.0 * FOOT * depth_scale, 2.5 * FOOT, 2.5 * FOOT),
-            (2.5 * FOOT, 2.5 * FOOT * depth_scale, 3.0 * FOOT, 5.0 * FOOT),
+            (3.0 * FOOT * depth_scale, 3.25 * FOOT * height_variation, ZERO),
+            (2.35 * FOOT * depth_scale, 3.25 * FOOT * height_variation, 2.25 * FOOT),
+            (1.65 * FOOT * depth_scale, 3.5 * FOOT * height_variation, 4.5 * FOOT),
         ]
-        for layer_idx, (width, depth, height, z_offset) in enumerate(_foliage_layers):
+        for layer_idx, (radius, height, z_offset) in enumerate(_foliage_layers):
             is_drawing_label = tree_number == 1 and layer_idx == 2  # label on top tier of first tree
-            builder.add_box(
+            tree_shape = (
+                Cone(to_mm(radius), to_mm(2 * INCH), to_mm(height))
+                .solid()
+                .translate((0.0, to_mm(tree_y), to_mm(tree_z + _tree_trunk_height + z_offset)))
+            )
+            builder.add_shape(
                 "site",
                 f"Tree_{tree_number:02d}Foliage_{layer_idx + 1}",
-                width,
-                depth,
-                height,
-                ZERO - width / 2,
-                tree_y - depth / 2,
-                tree_z + _tree_trunk_height + z_offset,
+                tree_shape,
                 TREE_GREEN,
+                Dimensions(to_mm(2 * radius), to_mm(2 * radius), to_mm(height)),
+                placement=(-radius, tree_y - radius, tree_z + _tree_trunk_height + z_offset),
                 drawing_label=is_drawing_label,
+                properties={
+                    "complex_type": "evergreen_foliage_crown",
+                    "assembly_role": "foliage",
+                    "conceptual": False,
+                },
             )
 
     # Positive-X evergreen line from the y=0 axis toward y=-14yd.  Retain an
@@ -1941,7 +2244,7 @@ def build_model(context: BuildContext) -> DesignModel:
             "center_x_mm": to_mm(cfg.RIGHT_TREE_LINE_X),
             "center_y_mm": to_mm(tree_y),
             "spacing_mm": to_mm(cfg.RIGHT_TREE_LINE_SPACING),
-            "conceptual": True,
+            "conceptual": False,
         }
         builder.add_cylinder(
             "site",
@@ -1952,28 +2255,52 @@ def build_model(context: BuildContext) -> DesignModel:
             TREE_BROWN,
             properties={**common_properties, "assembly_role": "trunk"},
         )
-        for layer_idx, (width, depth, height, z_offset) in enumerate(
+        height_variation = 1.0 + ((tree_number * 13) % 5 - 2) * 0.025
+        for layer_idx, (radius, height, z_offset) in enumerate(
             [
-                (6.0 * FOOT, 6.0 * FOOT, 2.5 * FOOT, ZERO),
-                (4.0 * FOOT, 4.0 * FOOT, 2.5 * FOOT, 2.5 * FOOT),
-                (2.5 * FOOT, 2.5 * FOOT, 3.0 * FOOT, 5.0 * FOOT),
+                (3.0 * FOOT, 3.25 * FOOT * height_variation, ZERO),
+                (2.35 * FOOT, 3.25 * FOOT * height_variation, 2.25 * FOOT),
+                (1.65 * FOOT, 3.5 * FOOT * height_variation, 4.5 * FOOT),
             ]
         ):
-            builder.add_box(
+            tree_shape = (
+                Cone(to_mm(radius), to_mm(2 * INCH), to_mm(height))
+                .solid()
+                .translate((to_mm(cfg.RIGHT_TREE_LINE_X), to_mm(tree_y), to_mm(_tree_trunk_height + z_offset)))
+            )
+            builder.add_shape(
                 "site",
                 f"RightBoundaryTree_{tree_number:02d}Foliage_{layer_idx + 1}",
-                width,
-                depth,
-                height,
-                cfg.RIGHT_TREE_LINE_X - width / 2,
-                tree_y - depth / 2,
-                _tree_trunk_height + z_offset,
+                tree_shape,
                 TREE_GREEN,
+                Dimensions(to_mm(2 * radius), to_mm(2 * radius), to_mm(height)),
+                placement=(cfg.RIGHT_TREE_LINE_X - radius, tree_y - radius, _tree_trunk_height + z_offset),
                 drawing_label=tree_number == 1 and layer_idx == 2,
                 properties={
                     **common_properties,
                     "assembly_role": "foliage",
                     "foliage_tier": layer_idx + 1,
+                },
+            )
+        if tree_number == 1:
+            # A small cardinal branch tip preserves exact design/IFC bounds;
+            # tessellated circular cones otherwise stop fractionally short of
+            # their analytical radius in the IFC representation.
+            builder.add_box(
+                "site",
+                "RightBoundaryTree_01CardinalBranchTip",
+                1 * INCH,
+                1 * INCH,
+                1 * INCH,
+                cfg.RIGHT_TREE_LINE_X - 0.5 * INCH,
+                tree_y + 3 * FOOT - 1 * INCH,
+                _tree_trunk_height + 2 * FOOT,
+                TREE_GREEN,
+                parent_id="complex.site.right_boundary_tree_01_foliage_1",
+                properties={
+                    **common_properties,
+                    "complex_type": "evergreen_branch_tip",
+                    "assembly_role": "cardinal_foliage_extent",
                 },
             )
 

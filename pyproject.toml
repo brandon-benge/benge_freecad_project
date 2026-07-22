@@ -40,7 +40,11 @@ include = []
 
 [tool.pytest.ini_options]
 addopts = "-q --timeout=300 --timeout-method=thread"
-markers = ["e2e: End-to-end tests requiring external services or browsers"]
+markers = [
+  "integration: Artifact and export integration tests",
+  "viewer: Viewer and local HTTP behavior tests",
+  "e2e: End-to-end tests requiring external services, sockets, or browsers",
+]
 
 [tool.mypy]
 python_version = "3.12"

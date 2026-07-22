@@ -19,6 +19,8 @@ from pypdf import PdfReader
 from python_cad_tools.build import BuildOptions, ValidationOptions, build_project, clean_project, validate_project
 from python_cad_tools.determinism import semantic_hash
 
+pytestmark = [pytest.mark.integration]
+
 ANNOTATION_IDS = {
     "file.annotation.section.a301",
     "file.annotation.elevation.a201",

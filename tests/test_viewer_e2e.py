@@ -14,7 +14,7 @@ from python_cad_tools.build import BuildOptions, build_project
 from python_cad_tools.exceptions import UnsafePathError
 from python_cad_tools.site import prepare_site
 
-pytestmark = [pytest.mark.e2e]
+pytestmark = [pytest.mark.e2e, pytest.mark.viewer]
 
 
 # ── Pytest options ───────────────────────────────────────────────────────────

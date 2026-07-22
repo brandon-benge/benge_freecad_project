@@ -535,6 +535,50 @@ def test_hot_tub_sits_within_lower_deck(design_manifest: dict) -> None:
     assert (lower_right_x - hot_tub[3]) >= to_mm(1 * FOOT) - 1e-6
 
 
+def test_hot_tub_placeholder_id_now_contains_detailed_spa_assembly(design_manifest: dict) -> None:
+    shell = _element_by_id(design_manifest, "complex.feature.hot_tub_placeholder")
+    ids = {element["id"] for element in design_manifest["elements"]}
+
+    assert shell["name"] == "HotTubSpaShell"
+    assert {
+        "complex.pool.hot_tub_water",
+        "complex.feature.hot_tub_access_step_1",
+        "complex.feature.hot_tub_access_step_2",
+    } <= ids
+    shell_bounds = _bounds(design_manifest, "complex.feature.hot_tub_placeholder")
+    lower_step = _bounds(design_manifest, "complex.feature.hot_tub_access_step_1")
+    upper_step = _bounds(design_manifest, "complex.feature.hot_tub_access_step_2")
+    assert lower_step[4] == pytest.approx(upper_step[1])
+    assert upper_step[5] == pytest.approx(shell_bounds[5])
+
+
+def test_pool_has_shell_coping_and_entry_steps(design_manifest: dict) -> None:
+    ids = {element["id"] for element in design_manifest["elements"]}
+    assert {
+        "complex.pool.main_pool_shell",
+        "complex.site.main_pool_coping",
+        "complex.pool.main_pool_entry_step_1",
+        "complex.pool.main_pool_entry_step_2",
+        "complex.pool.main_pool_entry_step_3",
+    } <= ids
+
+
+def test_guard_rails_include_code_spaced_balusters(design_manifest: dict) -> None:
+    balusters = [
+        element
+        for element in design_manifest["elements"]
+        if element["id"].startswith("complex.railing.upper_front_rail_baluster_")
+    ]
+    assert len(balusters) > 10
+
+
+def test_tree_foliage_is_tapered_and_varied(design_manifest: dict) -> None:
+    lower = _bounds(design_manifest, "complex.site.tree_01_foliage_1")
+    upper = _bounds(design_manifest, "complex.site.tree_01_foliage_3")
+    assert (lower[3] - lower[0]) > (upper[3] - upper[0])
+    assert lower[5] > lower[2]
+
+
 def test_lower_mid_beam_clears_hot_tub_and_support_post_tracks_beam(
     copied_project: Path, design_manifest: dict
 ) -> None:

@@ -148,6 +148,59 @@ the exact blocker, evidence, and user input or access needed.
 
 ## Verification expectations
 
+Use the smallest verification tier that provides evidence proportional to the
+change. Do not run integration, viewer, or E2E tests by default for a localized
+design-source change.
+
+### Focused tier
+
+Use for localized changes to parameters, geometry, annotations, metadata, or
+focused tests. Run:
+
+```text
+ruff check config.py model.py drawing_annotations.py tests/
+ruff format --check config.py model.py drawing_annotations.py tests/
+mypy config.py model.py drawing_annotations.py tests/
+python -m pytest -q <affected test files or node IDs>
+python-cad validate --project-root .
+```
+
+Select affected tests narrowly. Do not substitute the complete test suite when
+a test file or node ID directly covers the change.
+
+### Export-sensitive tier
+
+Use when a change affects solid construction, semantic identity, materials,
+relationships, quantities, drawings, or exported formats. Run the focused tier
+first, then the applicable integration and artifact checks:
+
+```text
+python -m pytest -q -m integration
+python-cad build --project-root .
+python-cad verify --project-root .
+```
+
+Run only the applicable commands when the current environment or installed
+toolchain cannot support an output. Report every skipped or failed command and
+its reason.
+
+### Full and E2E tier
+
+Run the complete suite, site preparation, HTTP, viewer, or browser checks only
+for broad cross-project changes, UI or site changes, minor or major dependency
+upgrades, explicit full/E2E requests, or failures that require those checks for
+diagnosis:
+
+```text
+python -m pytest -q
+python -m pytest -q -m "e2e or viewer"
+python-cad prepare-site --project-root . --destination site --base-path /file-template-cad/
+```
+
+The `integration` marker identifies artifact/export integration tests. The
+`viewer` marker identifies viewer and local HTTP behavior. The `e2e` marker
+identifies end-to-end tests that may require services, sockets, or browsers.
+
 Classify `python-cad-tools` upgrades with semantic versioning. A change only to
 the patch component (for example, `0.1.4` to `0.1.5`) uses basic tests and must
 not run E2E tests. A minor or major change, or a user request for a full
@@ -158,21 +211,6 @@ The `python-cad-tools-upgrader` owns dependency upgrades. It must use its skill,
 install only the published package, regenerate applicable locks, and run the
 documented upgrade smoke sequence. It must not run E2E tests for patch-only
 upgrades unless the user explicitly requests them.
-
-Run the checks that apply to the change and current environment. The declared
-project workflow may include:
-
-```text
-ruff check config.py model.py drawing_annotations.py tests/
-ruff format --check config.py model.py drawing_annotations.py tests/
-mypy config.py model.py drawing_annotations.py tests/
-python -m pytest -q
-python-cad validate --project-root .
-python-cad build --project-root .
-python-cad verify --project-root .
-python-cad clean --project-root .
-python-cad prepare-site --project-root . --destination site --base-path /file-template-cad/
-```
 
 Do not invent unsupported commands or silently bypass failed checks. Report
 environment-specific skipped checks and the reason.

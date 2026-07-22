@@ -145,12 +145,21 @@ Invoke `save` only after the user explicitly asks to commit the changes to Git.
 3. Identify affected complex IDs, types, labels, metadata, and relationships.
 4. Implement the smallest coherent parametric change.
 5. Update or add focused tests.
-6. Run applicable static checks and tests.
-7. Build and validate affected outputs.
-8. Inspect generated evidence.
-9. Delegate independent review where appropriate.
-10. Resolve findings within the editable scope.
-11. Return changed files, checks, output status, and blockers.
+6. Select the smallest sufficient verification tier from `AGENTS.md`:
+   - focused for localized parameters, geometry, annotations, metadata, or tests
+   - export-sensitive for solids, semantics, materials, relationships,
+     quantities, drawings, or output formats
+   - full/E2E only for broad, UI/site, upgrade, diagnostic, or explicitly
+     requested coverage
+7. Run static checks, affected test files or node IDs, and validation. Do not
+   replace focused tests with the complete suite by default.
+8. Build and verify affected outputs only when the export-sensitive tier
+   applies.
+9. Inspect generated evidence when outputs were rebuilt.
+10. Delegate independent review where appropriate.
+11. Resolve findings within the editable scope.
+12. Return changed files, selected verification tier, checks, output status,
+    and blockers.
 
 ## Completion evidence
 
